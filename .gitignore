@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+*.vsix
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE settings (optional - you may want to keep these)
+.vscode/
+
+# Temporary files
+*.log
+*.tmp
+
+# Publishing notes (personal)
+extension_status.txt

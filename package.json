@@ -1,0 +1,37 @@
+{
+  "name": "antigravity-auto-accept",
+  "displayName": "Antigravity Auto Accept",
+  "description": "Automatically accepts Antigravity agent steps without limits.",
+  "version": "1.0.3",
+  "icon": "icon.png",
+  "publisher": "pesosz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pesosz/antigravity-auto-accept"
+  },
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./extension.js",
+  "categories": [
+    "Other"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "unlimited.toggle",
+        "title": "Toggle Unlimited Auto-Accept"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "unlimited.toggle",
+        "key": "ctrl+alt+shift+u",
+        "mac": "cmd+alt+shift+u"
+      }
+    ]
+  }
+}
