@@ -1,0 +1,8 @@
+
+.vscode
+.git
+.gitignore
+*.vsix
+PUBLISHING.md
+PUBLISHING_OPENVSX.md
+extension_status.txt
