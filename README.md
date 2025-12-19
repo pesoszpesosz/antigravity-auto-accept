@@ -1,6 +1,6 @@
 # Antigravity Auto Accept
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/pesosz/antigravity-auto-accept)
+[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/pesoszpesosz/antigravity-auto-accept)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 **Finally, true hands-free automation for your Antigravity Agent.**
@@ -19,7 +19,7 @@ It bypasses the limitations of external scripts by running directly inside the I
 
 ### Option 1: Install from VSIX (Recommended)
 
-1. Download the latest `.vsix` file from [Releases](https://github.com/pesosz/antigravity-auto-accept/releases)
+1. Download the latest `.vsix` file from [Releases](https://github.com/pesoszpesosz/antigravity-auto-accept/releases)
 2. Open Antigravity IDE
 3. Go to **Extensions** → Click `...` menu → **Install from VSIX...**
 4. Select the downloaded `.vsix` file
@@ -28,7 +28,7 @@ It bypasses the limitations of external scripts by running directly inside the I
 ### Option 2: Build from Source
 
 ```bash
-git clone https://github.com/pesosz/antigravity-auto-accept.git
+git clone https://github.com/pesoszpesosz/antigravity-auto-accept.git
 cd antigravity-auto-accept
 npm install -g @vscode/vsce
 vsce package
