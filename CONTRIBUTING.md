@@ -6,7 +6,7 @@ Thank you for your interest in contributing to **Antigravity Auto Accept**!
 
 ### Reporting Bugs
 
-1. Check if the issue already exists in [GitHub Issues](https://github.com/pesosz/antigravity-auto-accept/issues)
+1. Check if the issue already exists in [GitHub Issues](https://github.com/pesoszpesosz/antigravity-auto-accept/issues)
 2. If not, create a new issue with:
    - Clear title and description
    - Steps to reproduce
@@ -31,7 +31,7 @@ Open an issue with the `enhancement` label describing your idea.
 
 ```bash
 # Clone the repo
-git clone https://github.com/pesosz/antigravity-auto-accept.git
+git clone https://github.com/pesoszpesosz/antigravity-auto-accept.git
 
 # Install vsce for packaging
 npm install -g @vscode/vsce

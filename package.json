@@ -7,7 +7,7 @@
   "publisher": "pesosz",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pesosz/antigravity-auto-accept"
+    "url": "https://github.com/pesoszpesosz/antigravity-auto-accept"
   },
   "engines": {
     "vscode": "^1.60.0"
