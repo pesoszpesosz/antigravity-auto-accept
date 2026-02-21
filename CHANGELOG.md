@@ -2,6 +2,11 @@
 
 All notable changes to the **Antigravity Auto Accept** extension will be documented in this file.
 
+## [1.0.4] - 2026-2-21
+- Added support for the `antigravity.prioritized.agentAcceptFocusedHunk` and `antigravity.terminal.accept` commands to automatically accept focused change blocks in the new Antigravity version.
+- Switched from `setInterval` to a recursive `setTimeout` loop combined with `async/await`. This ensures commands are only dispatched after the previous command has completed, preventing UI crashes or command queue overflows.
+- Compressed the `icon.png` file from approximately 330KB to approximately 15KB (a reduction of over 95%), significantly reducing the size of the final `.vsix` file.
+
 ## [1.0.3] - 2025-12-10
 
 ### Fixed

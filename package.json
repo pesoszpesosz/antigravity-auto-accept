@@ -2,8 +2,8 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity Auto Accept",
   "description": "Automatically accepts Antigravity agent steps without limits.",
-  "version": "1.0.3",
-  "icon": "icon.png",
+  "version": "1.0.4",
+  "icon": "icon.webp",
   "publisher": "pesosz",
   "repository": {
     "type": "git",

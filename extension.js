@@ -1,73 +1,71 @@
-
 const vscode = require('vscode');
 
-let autoAcceptInterval = null;
-let enabled = true;
-let statusBarItem;
+let isEnabled = true;
+let autoAcceptTask = null;
+let statusBarIndicator;
 
 function activate(context) {
-    // Register toggle command
-    let disposable = vscode.commands.registerCommand('unlimited.toggle', function () {
-        enabled = !enabled;
+    let toggleAction = vscode.commands.registerCommand('unlimited.toggle', function () {
+        isEnabled = !isEnabled;
         updateStatusBar();
-        if (enabled) {
+        if (isEnabled) {
             vscode.window.showInformationMessage('Auto-Accept: ON ✅');
+            executeAutoAccept();
         } else {
             vscode.window.showInformationMessage('Auto-Accept: OFF 🛑');
+            if (autoAcceptTask) {
+                clearTimeout(autoAcceptTask);
+                autoAcceptTask = null;
+            }
         }
     });
-    context.subscriptions.push(disposable);
+    context.subscriptions.push(toggleAction);
 
     try {
-        // Create Right Item (High Priority)
-        // Alignment Right, Priority 10000 ensures it is the first/left-most item in the Right block
-        statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 10000);
-        statusBarItem.command = 'unlimited.toggle';
-        context.subscriptions.push(statusBarItem);
-
+        statusBarIndicator = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 10000);
+        statusBarIndicator.command = 'unlimited.toggle';
+        context.subscriptions.push(statusBarIndicator);
         updateStatusBar();
-        statusBarItem.show();
-    } catch (e) {
-        // Silent failure in production to avoid harassing user
-    }
+        statusBarIndicator.show();
+    } catch (error) {}
 
-    // Start the loop
-    startLoop();
+    executeAutoAccept();
 }
 
 function updateStatusBar() {
-    if (!statusBarItem) return;
+    if (!statusBarIndicator) return;
 
-    if (enabled) {
-        statusBarItem.text = "✅ Auto-Accept: ON";
-        statusBarItem.tooltip = "Unlimited Auto-Accept is Executing (Click to Pause)";
-        statusBarItem.backgroundColor = undefined;
+    if (isEnabled) {
+        statusBarIndicator.text = "✅ Auto-Accept: ON";
+        statusBarIndicator.tooltip = "Unlimited Auto-Accept is Executing";
+        statusBarIndicator.backgroundColor = undefined;
     } else {
-        statusBarItem.text = "🛑 Auto-Accept: OFF";
-        statusBarItem.tooltip = "Unlimited Auto-Accept is Paused (Click to Resume)";
-        statusBarItem.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
+        statusBarIndicator.text = "🛑 Auto-Accept: OFF";
+        statusBarIndicator.tooltip = "Unlimited Auto-Accept is Paused";
+        statusBarIndicator.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
     }
 }
 
-function startLoop() {
-    autoAcceptInterval = setInterval(async () => {
-        if (!enabled) return;
-        try {
-            await vscode.commands.executeCommand('antigravity.agent.acceptAgentStep');
-        } catch (e) { }
-        try {
-            await vscode.commands.executeCommand('antigravity.terminal.accept');
-        } catch (e) { }
-    }, 500);
+async function executeAutoAccept() {
+    if (!isEnabled) return;
+
+    try {
+        await vscode.commands.executeCommand('antigravity.agent.acceptAgentStep');
+        await vscode.commands.executeCommand('antigravity.terminalCommand.accept');
+        await vscode.commands.executeCommand('antigravity.terminal.accept');
+        await vscode.commands.executeCommand('antigravity.prioritized.agentAcceptFocusedHunk');
+    } catch (error) {}
+
+    autoAcceptTask = setTimeout(executeAutoAccept, 500);
 }
 
 function deactivate() {
-    if (autoAcceptInterval) {
-        clearInterval(autoAcceptInterval);
+    if (autoAcceptTask) {
+        clearTimeout(autoAcceptTask);
     }
 }
 
 module.exports = {
     activate,
     deactivate
-}
+};
