@@ -70,6 +70,23 @@ Expected main process contains:
 
 - `--remote-debugging-port=9000`
 
+### One-Command Clean Profile Verification
+
+Use:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-clean-ide.ps1
+```
+
+This script:
+
+- builds VSIX (unless `-SkipBuild` is passed)
+- creates a brand-new profile under `state/clean-ide-YYYYMMDD-HHMMSS`
+- installs the VSIX into that clean extensions directory
+- launches Antigravity with `--remote-debugging-port=9000`
+- verifies CDP endpoint returns HTTP `200`
+- verifies extension activation appears in clean `exthost.log`
+
 ## 6) Extension Commands
 
 - `Auto Accept FREE: Toggle ON/OFF`

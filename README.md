@@ -32,6 +32,20 @@ npm run package
 powershell -ExecutionPolicy Bypass -File .\scripts\start-antigravity-cdp.ps1
 ```
 
+## Clean IDE Smoke Test
+
+Run one command to validate in a fresh profile (new user-data + extensions dirs), install VSIX, start CDP, and confirm extension activation:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-clean-ide.ps1
+```
+
+Fast re-run without rebuilding VSIX:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-clean-ide.ps1 -SkipBuild
+```
+
 ## Save/Backup Current Working State
 
 Create a full snapshot (installed extension + runtime config + logs + workspace files):
