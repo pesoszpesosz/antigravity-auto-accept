@@ -4,6 +4,10 @@
 
 Choose one:
 
+- Release page:
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.4
+- Release asset (recommended):
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix
 - GitHub file page:
   https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
 - Direct VSIX download:
@@ -11,6 +15,8 @@ Choose one:
 
 Optional integrity check:
 
+- SHA256 release asset:
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix.sha256
 - SHA256 file:
   https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
 
