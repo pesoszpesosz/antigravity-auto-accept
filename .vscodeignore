@@ -1,8 +1,12 @@
 
 .vscode
 .git
+.github
 .gitignore
 *.vsix
 PUBLISHING.md
 PUBLISHING_OPENVSX.md
 extension_status.txt
+state/**
+scripts/**
+WORKING_SETUP.md

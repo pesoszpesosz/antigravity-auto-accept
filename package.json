@@ -1,37 +1,97 @@
 {
-  "name": "antigravity-auto-accept",
-  "displayName": "Antigravity Auto Accept",
-  "description": "Automatically accepts Antigravity agent steps without limits.",
-  "version": "1.0.3",
-  "icon": "icon.png",
-  "publisher": "pesosz",
+  "name": "auto-accept-agent-free",
+  "displayName": "Auto Accept Agent FREE",
+  "description": "Hands-free AI agent approvals for Antigravity, Cursor, and VS Code. Auto-click Always Allow, Run, Continue, and recovery prompts.",
+  "version": "1.2.9",
+  "publisher": "ZNORK",
+  "license": "MIT",
+  "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/pesoszpesosz/antigravity-auto-accept"
+    "url": "https://github.com/open-source/auto-accept-agent-free"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "antigravity",
+    "cursor",
+    "vscode",
+    "ai",
+    "auto-accept",
+    "copilot",
+    "agent"
+  ],
+  "scripts": {
+    "compile": "esbuild extension.js --bundle --outfile=dist/extension.js --external:vscode --platform=node --format=cjs",
+    "vscode:prepublish": "npm run compile",
+    "package": "npx vsce package",
+    "build:vsix": "npm run compile && npm run package",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "engines": {
-    "vscode": "^1.60.0"
+    "vscode": "^1.75.0"
   },
   "activationEvents": [
     "onStartupFinished"
   ],
-  "main": "./extension.js",
-  "categories": [
-    "Other"
-  ],
+  "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "unlimited.toggle",
-        "title": "Toggle Unlimited Auto-Accept"
+        "command": "auto-accept-free.toggle",
+        "title": "Auto Accept FREE: Toggle ON/OFF"
+      },
+      {
+        "command": "auto-accept-free.toggleBackground",
+        "title": "Auto Accept FREE: Toggle Background Mode"
+      },
+      {
+        "command": "auto-accept-free.setupCDP",
+        "title": "Auto Accept FREE: Setup CDP"
       }
     ],
-    "keybindings": [
-      {
-        "command": "unlimited.toggle",
-        "key": "ctrl+alt+shift+u",
-        "mac": "cmd+alt+shift+u"
+    "configuration": {
+      "title": "Auto Accept Agent FREE",
+      "properties": {
+        "autoAcceptFree.pollInterval": {
+          "type": "number",
+          "default": 500,
+          "description": "Polling interval in milliseconds (lower is faster)"
+        },
+        "autoAcceptFree.bannedCommands": {
+          "type": "array",
+          "default": [
+            "rm -rf /",
+            "rm -rf ~",
+            "rm -rf *",
+            "format c:",
+            "del /f /s /q",
+            "rmdir /s /q",
+            ":(){:|:&};:",
+            "dd if=",
+            "mkfs.",
+            "> /dev/sda",
+            "chmod -R 777 /"
+          ],
+          "description": "Dangerous command patterns blocked automatically"
+        }
       }
-    ]
+    }
+  },
+  "dependencies": {
+    "ws": "^8.13.0"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.75.0",
+    "@vitest/coverage-v8": "^2.1.8",
+    "esbuild": "^0.19.0",
+    "jsdom": "^25.0.1",
+    "playwright": "^1.58.2",
+    "vitest": "^2.1.8",
+    "vsce": "^2.15.0"
   }
 }

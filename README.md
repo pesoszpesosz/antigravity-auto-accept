@@ -1,107 +1,50 @@
-# Antigravity Auto Accept
+# Auto Accept Agent FREE (Working State)
 
-[![Version](https://img.shields.io/badge/version-1.0.3-blue.svg)](https://github.com/pesoszpesosz/antigravity-auto-accept)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+This repo is pinned to the currently working state of your extension setup:
 
-**Finally, true hands-free automation for your Antigravity Agent.**
+- CDP-enabled prompt automation on port `9000`
+- Safe `Run command?` handling (including `RunAlt+...` labels)
+- Disabled random background tab/action-bar clicking
+- Reproducible build/install flow
 
-This extension automatically accepts **ALL** pending steps from the Antigravity Agent, including:
+## Quick Start
 
-- ✅ **Run Command** requests (Terminal)
-- ✅ **Save File** requests  
-- ✅ **Code Edits**
-
-It bypasses the limitations of external scripts by running directly inside the IDE process, ensuring 100% reliability even when the window is minimized or unfocused.
-
----
-
-## 🚀 Installation
-
-### Option 1: Install from VSIX (Recommended)
-
-1. Download the latest `.vsix` file from [Releases](https://github.com/pesoszpesosz/antigravity-auto-accept/releases)
-2. Open Antigravity IDE
-3. Go to **Extensions** → Click `...` menu → **Install from VSIX...**
-4. Select the downloaded `.vsix` file
-5. Restart the IDE
-
-### Option 2: Build from Source
-
+1. Install dependencies:
 ```bash
-git clone https://github.com/pesoszpesosz/antigravity-auto-accept.git
-cd antigravity-auto-accept
-npm install -g @vscode/vsce
-vsce package
+npm install
 ```
 
-Then install the generated `.vsix` file as described above.
+2. Build extension bundle:
+```bash
+npm run compile
+```
 
----
+3. Package VSIX:
+```bash
+npm run package
+```
 
-## ✨ Features
+4. Install VSIX in Antigravity:
+- Command Palette -> `Extensions: Install from VSIX...`
 
-| Feature | Description |
-|---------|-------------|
-| **Zero-Interference** | Runs silently in the background |
-| **Toggle Control** | Click status bar or use keyboard shortcut |
-| **Visual Status** | Green (ON) / Red (OFF) indicators |
-| **Deep Integration** | Calls internal Antigravity commands directly |
+5. Start Antigravity with CDP:
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-antigravity-cdp.ps1
+```
 
----
+## Save/Backup Current Working State
 
-## ⌨️ Keyboard Shortcuts
+Create a full snapshot (installed extension + runtime config + logs + workspace files):
 
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+Alt+Shift+U` | Toggle Auto-Accept ON/OFF |
-| `Cmd+Alt+Shift+U` (Mac) | Toggle Auto-Accept ON/OFF |
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\save-working-state.ps1 -ZipSnapshot
+```
 
----
+Snapshot output goes to:
 
-## 📖 Usage
+- `state/snapshots/snapshot-YYYYMMDD-HHMMSS`
+- optional zip: `state/snapshots/snapshot-YYYYMMDD-HHMMSS.zip`
 
-1. Install the extension
-2. Restart Antigravity IDE
-3. The extension activates automatically (`✅ Auto-Accept: ON`)
-4. Launch an Agent task and sit back!
+## Full Instructions
 
-The status bar shows the current state:
-- `✅ Auto-Accept: ON` - All agent steps are being auto-accepted
-- `🛑 Auto-Accept: OFF` - Manual approval required
-
----
-
-## 🔧 Requirements
-
-- Antigravity IDE (VS Code based)
-
----
-
-## ❓ FAQ
-
-**Q: Is this safe to use?**  
-A: The extension only accepts steps that Antigravity Agent proposes. Review agent behavior periodically.
-
-**Q: Can I pause it temporarily?**  
-A: Yes! Click the status bar item or press `Ctrl+Alt+Shift+U`.
-
-**Q: Does it work when the window is minimized?**  
-A: Yes, that's the main advantage over external automation scripts.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
----
-
-## 📜 License
-
-MIT - See [LICENSE](LICENSE) for details.
-
----
-
-## ⭐ Support
-
-If you find this useful, consider giving it a star on GitHub!
+See [WORKING_SETUP.md](./WORKING_SETUP.md) for detailed build, run, verification, and troubleshooting steps.
