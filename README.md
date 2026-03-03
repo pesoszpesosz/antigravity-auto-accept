@@ -1,64 +1,65 @@
-# Auto Accept Agent FREE (Working State)
+# Antigravity Auto Accept
 
-This repo is pinned to the currently working state of your extension setup:
+Auto-accept extension for Antigravity agent approval prompts, with optional CDP-assisted setup on port `9000`.
 
-- CDP-enabled prompt automation on port `9000`
-- Safe `Run command?` handling (including `RunAlt+...` labels)
-- Disabled random background tab/action-bar clicking
-- Reproducible build/install flow
+## Download v1.0.4
 
-## Quick Start
+- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/main/release/antigravity-auto-accept-1.0.4.vsix
+- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix
+- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix.sha256
 
-1. Install dependencies:
+## Install In 60 Seconds (Users)
+
+1. Download `antigravity-auto-accept-1.0.4.vsix`.
+2. Open Antigravity.
+3. Open Command Palette and run `Extensions: Install from VSIX...`.
+4. Select the VSIX file.
+5. Reload the IDE when prompted.
+6. On first run, if CDP is not enabled, accept `Set Up Now`.
+
+If setup succeeds, a desktop shortcut is created:
+- `Start Antigravity (CDP 9000).lnk`
+
+## If Auto Setup Does Not Reopen The Correct Window
+
+1. Close all Antigravity windows.
+2. Start Antigravity from the desktop shortcut:
+   `Start Antigravity (CDP 9000).lnk`.
+3. If needed, run command:
+   `Antigravity Auto Accept: Setup CDP`.
+4. Restart Antigravity again.
+5. In some environments, first-time setup can require `2-3` restarts.
+
+Manual fallback (Windows PowerShell):
+
+```powershell
+$exe = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe"
+Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
+Stop-Process -Name Antigravity -ErrorAction SilentlyContinue
+Start-Sleep -Seconds 1
+Start-Process $exe -ArgumentList '--remote-debugging-port=9000'
+```
+
+Verify CDP:
+
+```powershell
+Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9000/json/version
+```
+
+Expected: HTTP `200`.
+
+## Developer Build
+
 ```bash
 npm install
+npm run build:vsix
 ```
 
-2. Build extension bundle:
-```bash
-npm run compile
-```
+Output:
+- `antigravity-auto-accept-1.0.4.vsix`
 
-3. Package VSIX:
-```bash
-npm run package
-```
+## More Docs
 
-4. Install VSIX in Antigravity:
-- Command Palette -> `Extensions: Install from VSIX...`
-
-5. Start Antigravity with CDP:
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\start-antigravity-cdp.ps1
-```
-
-## Clean IDE Smoke Test
-
-Run one command to validate in a fresh profile (new user-data + extensions dirs), install VSIX, start CDP, and confirm extension activation:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-clean-ide.ps1
-```
-
-Fast re-run without rebuilding VSIX:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\smoke-test-clean-ide.ps1 -SkipBuild
-```
-
-## Save/Backup Current Working State
-
-Create a full snapshot (installed extension + runtime config + logs + workspace files):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\save-working-state.ps1 -ZipSnapshot
-```
-
-Snapshot output goes to:
-
-- `state/snapshots/snapshot-YYYYMMDD-HHMMSS`
-- optional zip: `state/snapshots/snapshot-YYYYMMDD-HHMMSS.zip`
-
-## Full Instructions
-
-See [WORKING_SETUP.md](./WORKING_SETUP.md) for detailed build, run, verification, and troubleshooting steps.
+- Full runbook: [WORKING_SETUP.md](./WORKING_SETUP.md)
+- End-user install guide: [INSTALL.md](./INSTALL.md)
+- Publishing guide: [PUBLISH_GITHUB.md](./PUBLISH_GITHUB.md)

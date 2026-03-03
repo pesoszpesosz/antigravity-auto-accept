@@ -10,3 +10,9 @@ extension_status.txt
 state/**
 scripts/**
 WORKING_SETUP.md
+manual_test/**
+extracted_vsix/**
+temp_*/**
+test_approval/**
+node-v*/**
+*.zip

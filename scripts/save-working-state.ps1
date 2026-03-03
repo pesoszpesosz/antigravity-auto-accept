@@ -28,7 +28,10 @@ foreach ($d in $dirs) {
 New-Item -ItemType Directory -Path $stateRoot -Force | Out-Null
 
 $installedExtension = Get-ChildItem "$env:USERPROFILE\.antigravity\extensions" -Directory -ErrorAction SilentlyContinue |
-    Where-Object { $_.Name -like "znork.auto-accept-agent-free-*" } |
+    Where-Object {
+        $_.Name -like "*.antigravity-auto-accept-*" -or
+        $_.Name -like "*.auto-accept-agent-free-*"
+    } |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 
@@ -64,7 +67,11 @@ foreach ($cfg in $configMap.Keys) {
     }
 }
 
-$autoAcceptLog = Get-ChildItem "$env:APPDATA\Antigravity\logs" -Recurse -Filter "*Auto Accept FREE*.log" -ErrorAction SilentlyContinue |
+$autoAcceptLog = Get-ChildItem "$env:APPDATA\Antigravity\logs" -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object {
+        $_.Name -like "*Antigravity Auto Accept*.log" -or
+        $_.Name -like "*Auto Accept FREE*.log"
+    } |
     Sort-Object LastWriteTime -Descending |
     Select-Object -First 1
 if ($autoAcceptLog) {

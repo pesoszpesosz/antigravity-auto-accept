@@ -2247,7 +2247,7 @@ var require_websocket = __commonJS({
     "use strict";
     var EventEmitter = require("events");
     var https = require("https");
-    var http = require("http");
+    var http2 = require("http");
     var net = require("net");
     var tls = require("tls");
     var { randomBytes, createHash } = require("crypto");
@@ -2798,7 +2798,7 @@ var require_websocket = __commonJS({
       }
       const defaultPort = isSecure ? 443 : 80;
       const key = randomBytes(16).toString("base64");
-      const request = isSecure ? https.request : http.request;
+      const request = isSecure ? https.request : http2.request;
       const protocolSet = /* @__PURE__ */ new Set();
       let perMessageDeflate;
       opts.createConnection = opts.createConnection || (isSecure ? tlsConnect : netConnect);
@@ -3315,7 +3315,7 @@ var require_websocket_server = __commonJS({
   "node_modules/ws/lib/websocket-server.js"(exports2, module2) {
     "use strict";
     var EventEmitter = require("events");
-    var http = require("http");
+    var http2 = require("http");
     var { Duplex } = require("stream");
     var { createHash } = require("crypto");
     var extension = require_extension();
@@ -3390,8 +3390,8 @@ var require_websocket_server = __commonJS({
           );
         }
         if (options.port != null) {
-          this._server = http.createServer((req, res) => {
-            const body = http.STATUS_CODES[426];
+          this._server = http2.createServer((req, res) => {
+            const body = http2.STATUS_CODES[426];
             res.writeHead(426, {
               "Content-Length": body.length,
               "Content-Type": "text/plain"
@@ -3687,7 +3687,7 @@ var require_websocket_server = __commonJS({
       this.destroy();
     }
     function abortHandshake(socket, code, message, headers) {
-      message = message || http.STATUS_CODES[code];
+      message = message || http2.STATUS_CODES[code];
       headers = {
         Connection: "close",
         "Content-Type": "text/html",
@@ -3696,7 +3696,7 @@ var require_websocket_server = __commonJS({
       };
       socket.once("finish", socket.destroy);
       socket.end(
-        `HTTP/1.1 ${code} ${http.STATUS_CODES[code]}\r
+        `HTTP/1.1 ${code} ${http2.STATUS_CODES[code]}\r
 ` + Object.keys(headers).map((h) => `${h}: ${headers[h]}`).join("\r\n") + "\r\n\r\n" + message
       );
     }
@@ -3731,9 +3731,9 @@ var require_ws = __commonJS({
 var require_cdp_handler = __commonJS({
   "main_scripts/cdp-handler.js"(exports2, module2) {
     var WebSocket = require_ws();
-    var http = require("http");
-    var fs = require("fs");
-    var path = require("path");
+    var http2 = require("http");
+    var fs2 = require("fs");
+    var path2 = require("path");
     var BASE_PORT = 9e3;
     var PORT_RANGE = 3;
     var _autoAcceptScript = null;
@@ -3741,17 +3741,17 @@ var require_cdp_handler = __commonJS({
       if (_autoAcceptScript)
         return _autoAcceptScript;
       const candidates = [
-        path.join(__dirname, "auto-accept.js"),
-        path.join(__dirname, "main_scripts", "auto-accept.js"),
-        path.join(__dirname, "..", "main_scripts", "auto-accept.js")
+        path2.join(__dirname, "auto-accept.js"),
+        path2.join(__dirname, "main_scripts", "auto-accept.js"),
+        path2.join(__dirname, "..", "main_scripts", "auto-accept.js")
       ];
       for (const scriptPath of candidates) {
-        if (fs.existsSync(scriptPath)) {
-          _autoAcceptScript = fs.readFileSync(scriptPath, "utf8");
+        if (fs2.existsSync(scriptPath)) {
+          _autoAcceptScript = fs2.readFileSync(scriptPath, "utf8");
           return _autoAcceptScript;
         }
       }
-      throw new Error(`auto-accept.js n\xE3o encontrado. __dirname=${__dirname}`);
+      throw new Error(`auto-accept.js not found. __dirname=${__dirname}`);
     }
     var CDPHandler = class {
       constructor(logger = console.log) {
@@ -3784,7 +3784,7 @@ var require_cdp_handler = __commonJS({
           bc: Array.isArray(config?.bannedCommands) ? config.bannedCommands.length : 0
         });
         if (!quiet || this._lastConfigHash !== configHash) {
-          this.log(`Escaneando portas ${BASE_PORT - PORT_RANGE} a ${BASE_PORT + PORT_RANGE}...`);
+          this.log(`Scanning ports ${BASE_PORT - PORT_RANGE} to ${BASE_PORT + PORT_RANGE}...`);
           this.log(`Config: background=${config.isBackgroundMode}, ide=${config.ide}`);
         }
         this._lastConfigHash = configHash;
@@ -3794,7 +3794,7 @@ var require_cdp_handler = __commonJS({
             if (pages.length > 0) {
               const newTargets = pages.filter((p) => !this.connections.has(`${port}:${p.id}`));
               if (!quiet || newTargets.length > 0) {
-                this.log(`Porta ${port}: ${pages.length} p\xE1gina(s) encontrada(s)`);
+                this.log(`Port ${port}: ${pages.length} page(s) found`);
               }
               for (const page of pages) {
                 const id = `${port}:${page.id}`;
@@ -3822,7 +3822,7 @@ var require_cdp_handler = __commonJS({
       }
       async _getPages(port) {
         return new Promise((resolve, reject) => {
-          const req = http.get({
+          const req = http2.get({
             hostname: "127.0.0.1",
             port,
             path: "/json/list",
@@ -3869,7 +3869,7 @@ var require_cdp_handler = __commonJS({
           ws.on("open", () => {
             clearTimeout(timeout);
             this.connections.set(id, { ws, injected: false, mode: null });
-            this.log(`Conectado \xE0 p\xE1gina ${id}`);
+            this.log(`Connected to page ${id}`);
             resolve(true);
           });
           ws.on("error", () => {
@@ -3879,7 +3879,7 @@ var require_cdp_handler = __commonJS({
           ws.on("close", () => {
             clearTimeout(timeout);
             this.connections.delete(id);
-            this.log(`Desconectado da p\xE1gina ${id}`);
+            this.log(`Disconnected from page ${id}`);
           });
         });
       }
@@ -3898,7 +3898,7 @@ var require_cdp_handler = __commonJS({
                 conn.injected = false;
                 conn.mode = null;
                 if (!quiet) {
-                  this.log(`Script ausente em ${id}; reinjetando...`);
+                  this.log(`Script missing in ${id}; reinjecting...`);
                 }
               }
             } catch (e) {
@@ -3909,16 +3909,16 @@ var require_cdp_handler = __commonJS({
           if (!conn.injected) {
             const script = getAutoAcceptScript();
             if (!quiet) {
-              this.log(`Injetando script em ${id} (${(script.length / 1024).toFixed(1)}KB)...`);
+              this.log(`Injecting script into ${id} (${(script.length / 1024).toFixed(1)}KB)...`);
             }
             await this._safeEvaluate(id, script, 1);
             conn.injected = true;
             if (!quiet) {
-              this.log(`Script injetado em ${id}`);
+              this.log(`Script injected into ${id}`);
             }
           }
           if (conn.mode !== null && conn.mode !== mode) {
-            this.log(`Modo mudou de ${conn.mode} para ${mode}, reiniciando...`);
+            this.log(`Mode changed from ${conn.mode} to ${mode}, restarting...`);
             await this._safeEvaluate(id, "if(window.__autoAcceptStop) window.__autoAcceptStop()", 1);
           }
           let isRunning = true;
@@ -3935,13 +3935,13 @@ var require_cdp_handler = __commonJS({
               bannedCommands: config.bannedCommands || []
             });
             if (!quiet) {
-              this.log(`Chamando __autoAcceptStart em ${id}`);
+              this.log(`Calling __autoAcceptStart in ${id}`);
             }
             await this._safeEvaluate(id, `if(window.__autoAcceptStart) window.__autoAcceptStart(${configJson})`, 1);
             conn.mode = mode;
           }
         } catch (e) {
-          this.log(`Falha ao injetar em ${id}: ${e.message}`);
+          this.log(`Failed to inject into ${id}: ${e.message}`);
         }
       }
       async _safeEvaluate(id, expression, retries = 0) {
@@ -4019,6 +4019,11 @@ var require_cdp_handler = __commonJS({
 
 // extension.js
 var vscode = require("vscode");
+var fs = require("fs");
+var path = require("path");
+var os = require("os");
+var http = require("http");
+var { spawn, spawnSync } = require("child_process");
 var isEnabled = false;
 var backgroundModeEnabled = false;
 var pollTimer;
@@ -4034,7 +4039,10 @@ var lastBackgroundToggleTs = 0;
 var cdpRefreshTimer;
 var lastStatsLogTs = 0;
 var lastAntigravityDiscoveryLogTs = 0;
+var setupPromptShownThisSession = false;
 var antigravityDiscoveredCommands = [];
+var CDP_PORT = 9e3;
+var FIRST_RUN_SETUP_DONE_KEY = "auto-accept-free-first-run-setup-done-v2";
 var pollFrequency = 500;
 var bannedCommands = [];
 var ACCEPT_COMMANDS_VSCODE = [
@@ -4185,7 +4193,7 @@ async function refreshRuntimeSafeCommands() {
     });
     log(`[AutoCmd] Runtime safe commands: ${runtimeSafeCommands.length}`);
   } catch (err) {
-    log(`[AutoCmd] Falha ao listar comandos runtime: ${err.message}`);
+    log(`[AutoCmd] Failed to enumerate runtime commands: ${err.message}`);
   }
 }
 function log(message) {
@@ -4208,20 +4216,289 @@ function detectIDE() {
     return "Cursor";
   return "VS Code";
 }
+function resolveEditorExecutable(ideName) {
+  const ide = String(ideName || "").toLowerCase();
+  if (ide === "antigravity") {
+    return {
+      ide: "antigravity",
+      appName: "Antigravity",
+      exePath: path.join(os.homedir(), "AppData", "Local", "Programs", "Antigravity", "Antigravity.exe"),
+      processName: "Antigravity.exe"
+    };
+  }
+  if (ide === "cursor") {
+    return {
+      ide: "cursor",
+      appName: "Cursor",
+      exePath: path.join(os.homedir(), "AppData", "Local", "Programs", "cursor", "Cursor.exe"),
+      processName: "Cursor.exe"
+    };
+  }
+  return null;
+}
+function getDesktopDir() {
+  const profileDesktop = path.join(os.homedir(), "Desktop");
+  if (fs.existsSync(profileDesktop)) {
+    return profileDesktop;
+  }
+  return process.env.USERPROFILE ? path.join(process.env.USERPROFILE, "Desktop") : profileDesktop;
+}
+function escapePowerShellSingleQuoted(input) {
+  return String(input || "").replace(/'/g, "''");
+}
+function quoteCmdArg(arg) {
+  const text = String(arg ?? "");
+  if (text.length === 0) {
+    return '""';
+  }
+  if (/[\s"&()^<>|]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+function getWindowsMainProcessCommandLine(exeInfo) {
+  if (process.platform !== "win32" || !exeInfo?.processName) {
+    return "";
+  }
+  const procName = escapePowerShellSingleQuoted(exeInfo.processName);
+  const psScript = [
+    `$proc = Get-CimInstance Win32_Process -Filter "Name='${procName}'" |`,
+    " Where-Object { $_.CommandLine -and $_.CommandLine -notmatch '--type=' } |",
+    " Select-Object -First 1 -ExpandProperty CommandLine;",
+    "if ($proc) { Write-Output $proc }"
+  ].join("");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0) {
+    return "";
+  }
+  return result.stdout ? result.stdout.toString().trim() : "";
+}
+function extractCliOptionValue(commandLine, optionName) {
+  if (!commandLine || !optionName) {
+    return "";
+  }
+  const escaped = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const eqPattern = new RegExp(`${escaped}=("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
+  const spacedPattern = new RegExp(`${escaped}\\s+("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
+  const eqMatch = commandLine.match(eqPattern);
+  if (eqMatch) {
+    return eqMatch[2] || eqMatch[3] || eqMatch[4] || "";
+  }
+  const spacedMatch = commandLine.match(spacedPattern);
+  if (spacedMatch) {
+    return spacedMatch[2] || spacedMatch[3] || spacedMatch[4] || "";
+  }
+  return "";
+}
+function getWindowsRelaunchArgs(exeInfo) {
+  const commandLine = getWindowsMainProcessCommandLine(exeInfo);
+  if (!commandLine) {
+    return [];
+  }
+  const args = [];
+  const options = ["--user-data-dir", "--extensions-dir", "--profile"];
+  for (const optionName of options) {
+    const optionValue = extractCliOptionValue(commandLine, optionName);
+    if (optionValue) {
+      args.push(optionName, optionValue);
+    }
+  }
+  return args;
+}
+function buildManualRestartNote(exeInfo, shortcutPath, port = CDP_PORT) {
+  const appName = exeInfo?.appName || "the IDE";
+  return [
+    `${appName} will be relaunched with CDP on port ${port}.`,
+    "If it does not reopen in the correct window/profile, close the IDE and open this desktop shortcut manually:",
+    shortcutPath,
+    "In some environments, first-time setup may require 2-3 restarts."
+  ].join("\n");
+}
+function writeWindowsCdpLauncher(exeInfo, port = CDP_PORT, relaunchArgs = []) {
+  const desktopDir = getDesktopDir();
+  if (!fs.existsSync(desktopDir)) {
+    fs.mkdirSync(desktopDir, { recursive: true });
+  }
+  const launcherName = `Start ${exeInfo.appName} (CDP ${port}).cmd`;
+  const launcherPath = path.join(desktopDir, launcherName);
+  const launchArgs = [`--remote-debugging-port=${port}`, ...relaunchArgs];
+  const launchArgString = launchArgs.map(quoteCmdArg).join(" ");
+  const launcherContent = [
+    "@echo off",
+    "setlocal",
+    'set "ELECTRON_RUN_AS_NODE="',
+    `taskkill /IM "${exeInfo.processName}" /F >nul 2>&1`,
+    "timeout /t 1 /nobreak >nul",
+    `if exist "${exeInfo.exePath}" (`,
+    `  start "" "${exeInfo.exePath}" ${launchArgString}`,
+    "  exit /b 0",
+    ")",
+    `echo Unable to find executable: ${exeInfo.exePath}`,
+    "exit /b 1"
+  ].join("\r\n");
+  fs.writeFileSync(launcherPath, launcherContent, "ascii");
+  return launcherPath;
+}
+function writeWindowsDesktopShortcut(targetCmdPath, exeInfo, port = CDP_PORT) {
+  const desktopDir = getDesktopDir();
+  const shortcutPath = path.join(desktopDir, `Start ${exeInfo.appName} (CDP ${port}).lnk`);
+  const targetEsc = escapePowerShellSingleQuoted(targetCmdPath);
+  const workDirEsc = escapePowerShellSingleQuoted(path.dirname(exeInfo.exePath));
+  const iconEsc = escapePowerShellSingleQuoted(exeInfo.exePath);
+  const lnkEsc = escapePowerShellSingleQuoted(shortcutPath);
+  const psScript = [
+    "$WScriptShell = New-Object -ComObject WScript.Shell",
+    `$Shortcut = $WScriptShell.CreateShortcut('${lnkEsc}')`,
+    `$Shortcut.TargetPath = '${targetEsc}'`,
+    `$Shortcut.WorkingDirectory = '${workDirEsc}'`,
+    `$Shortcut.IconLocation = '${iconEsc},0'`,
+    "$Shortcut.Save()"
+  ].join(";");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0) {
+    const stderr = result.stderr ? result.stderr.toString().trim() : "";
+    throw new Error(`Failed to create desktop shortcut: ${stderr || "unknown error"}`);
+  }
+  return shortcutPath;
+}
+function runWindowsLauncherDetached(launcherPath) {
+  const launchCommand = `start "" "${launcherPath}"`;
+  const child = spawn("cmd.exe", ["/d", "/s", "/c", launchCommand], {
+    detached: true,
+    stdio: "ignore",
+    windowsHide: true
+  });
+  child.unref();
+}
+async function isCDPPortReady(port = CDP_PORT, timeoutMs = 1200) {
+  return new Promise((resolve) => {
+    const req = http.get({
+      hostname: "127.0.0.1",
+      port,
+      path: "/json/version",
+      timeout: timeoutMs
+    }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+async function createAndRunAutomaticCdpSetup() {
+  const exeInfo = resolveEditorExecutable(currentIDE);
+  if (!exeInfo) {
+    return { ok: false, error: `Automatic setup is not available for ${currentIDE}.` };
+  }
+  if (!fs.existsSync(exeInfo.exePath)) {
+    return { ok: false, error: `${exeInfo.appName} executable not found at ${exeInfo.exePath}` };
+  }
+  if (process.platform !== "win32") {
+    return { ok: false, error: "Automatic desktop shortcut setup is currently supported on Windows only." };
+  }
+  try {
+    const relaunchArgs = getWindowsRelaunchArgs(exeInfo);
+    if (relaunchArgs.length > 0) {
+      log(`[Setup] Preserving launch args: ${relaunchArgs.join(" ")}`);
+    }
+    const launcherPath = writeWindowsCdpLauncher(exeInfo, CDP_PORT, relaunchArgs);
+    const shortcutPath = writeWindowsDesktopShortcut(launcherPath, exeInfo, CDP_PORT);
+    const alreadyReady = await isCDPPortReady(CDP_PORT, 1200);
+    let restarted = false;
+    if (!alreadyReady) {
+      const restartChoice = await vscode.window.showWarningMessage(
+        buildManualRestartNote(exeInfo, shortcutPath, CDP_PORT),
+        { modal: true },
+        "Restart Now",
+        "I Will Restart Manually"
+      );
+      if (restartChoice !== "I Will Restart Manually") {
+        runWindowsLauncherDetached(launcherPath);
+        restarted = true;
+      }
+    }
+    return {
+      ok: true,
+      launcherPath,
+      shortcutPath,
+      alreadyReady,
+      restarted
+    };
+  } catch (err) {
+    return { ok: false, error: err.message || String(err) };
+  }
+}
+async function maybePromptFirstRunSetup(context) {
+  const ide = (currentIDE || "").toLowerCase();
+  if (ide !== "antigravity") {
+    return;
+  }
+  const setupDone = !!context.globalState.get(FIRST_RUN_SETUP_DONE_KEY, false);
+  const cdpReady = await isCDPPortReady(CDP_PORT, 1200);
+  log(`[Setup] CDP check: ready=${cdpReady} setupDone=${setupDone}`);
+  if (cdpReady) {
+    if (!setupDone) {
+      await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
+      log("[Setup] CDP detected; marking setup done");
+    }
+    return;
+  }
+  if (setupDone) {
+    await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, false);
+    log("[Setup] CDP missing while setupDone was true; resetting setupDone=false");
+  }
+  if (setupPromptShownThisSession) {
+    return;
+  }
+  setupPromptShownThisSession = true;
+  const choice = await vscode.window.showWarningMessage(
+    `CDP is not enabled on port ${CDP_PORT}. Antigravity Auto Accept can configure this automatically, create a desktop shortcut, and restart Antigravity now. Set it up now?`,
+    { modal: true },
+    "Set Up Now",
+    "Later"
+  );
+  log(`[Setup] Prompt choice: ${choice || "dismissed"}`);
+  if (choice !== "Set Up Now") {
+    return;
+  }
+  const result = await createAndRunAutomaticCdpSetup();
+  if (!result.ok) {
+    vscode.window.showErrorMessage(`Auto setup failed: ${result.error}`);
+    return;
+  }
+  if (result.alreadyReady || result.restarted) {
+    await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
+    log("[Setup] Automatic setup finished successfully");
+  } else {
+    log("[Setup] Setup files created; waiting for user manual restart");
+    vscode.window.showWarningMessage(
+      buildManualRestartNote(resolveEditorExecutable(currentIDE), result.shortcutPath, CDP_PORT),
+      { modal: true },
+      "OK"
+    );
+  }
+}
 async function activate(context) {
   globalContext = context;
-  console.log("Auto Accept Extension FREE: Activating...");
+  console.log("Antigravity Auto Accept: Activating...");
   try {
     statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     statusBarItem.command = "auto-accept-free.toggle";
     statusBarItem.text = "$(sync~spin) Auto Accept: Loading...";
-    statusBarItem.tooltip = "Auto Accept FREE est\xE1 inicializando...";
+    statusBarItem.tooltip = "Antigravity Auto Accept is initializing...";
     context.subscriptions.push(statusBarItem);
     statusBarItem.show();
     statusBackgroundItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 99);
     statusBackgroundItem.command = "auto-accept-free.toggleBackground";
     statusBackgroundItem.text = "$(globe) Background: OFF";
-    statusBackgroundItem.tooltip = "Background Mode - Funciona em todas as conversas";
+    statusBackgroundItem.tooltip = "Background mode works across all agent chats";
     context.subscriptions.push(statusBackgroundItem);
     const config = vscode.workspace.getConfiguration("autoAcceptFree");
     pollFrequency = config.get("pollInterval", 500);
@@ -4242,11 +4519,11 @@ async function activate(context) {
     isEnabled = !!savedEnabled;
     backgroundModeEnabled = context.globalState.get("auto-accept-free-background", false);
     currentIDE = detectIDE();
-    outputChannel = vscode.window.createOutputChannel("Auto Accept FREE");
+    outputChannel = vscode.window.createOutputChannel("Antigravity Auto Accept");
     context.subscriptions.push(outputChannel);
-    log(`Auto Accept FREE: Detectado ${currentIDE}`);
-    log(`Intervalo: ${pollFrequency}ms`);
-    log(`Comandos bloqueados: ${bannedCommands.length} padr\xF5es`);
+    log(`Antigravity Auto Accept: Detected ${currentIDE}`);
+    log(`Poll interval: ${pollFrequency}ms`);
+    log(`Blocked command patterns: ${bannedCommands.length}`);
     await refreshRuntimeSafeCommands();
     if (runtimeCommandRefreshTimer) {
       clearInterval(runtimeCommandRefreshTimer);
@@ -4266,9 +4543,9 @@ async function activate(context) {
     try {
       const { CDPHandler } = require_cdp_handler();
       cdpHandler = new CDPHandler(log);
-      log("CDP Handler inicializado com sucesso");
+      log("CDP handler initialized");
     } catch (err) {
-      log(`Erro ao inicializar CDP: ${err.message}`);
+      log(`Failed to initialize CDP handler: ${err.message}`);
     }
     updateStatusBar();
     context.subscriptions.push(
@@ -4282,7 +4559,7 @@ async function activate(context) {
           const newConfig = vscode.workspace.getConfiguration("autoAcceptFree");
           pollFrequency = newConfig.get("pollInterval", 500);
           bannedCommands = newConfig.get("bannedCommands", []);
-          log(`Configura\xE7\xF5es atualizadas: ${pollFrequency}ms`);
+          log(`Settings updated: ${pollFrequency}ms`);
           refreshRuntimeSafeCommands();
           if (isEnabled) {
             restartPolling();
@@ -4293,32 +4570,37 @@ async function activate(context) {
     if (isEnabled) {
       await startPolling();
     }
-    log("Auto Accept FREE: Ativa\xE7\xE3o completa!");
+    setTimeout(() => {
+      maybePromptFirstRunSetup(context).catch((err) => {
+        log(`[Setup] Prompt failed: ${err.message}`);
+      });
+    }, 1500);
+    log("Antigravity Auto Accept: Activation complete");
   } catch (error) {
-    console.error("ERRO CR\xCDTICO NA ATIVA\xC7\xC3O:", error);
-    log(`ERRO CR\xCDTICO: ${error.message}`);
-    vscode.window.showErrorMessage(`Auto Accept Extension FREE falhou ao ativar: ${error.message}`);
+    console.error("CRITICAL ACTIVATION ERROR:", error);
+    log(`CRITICAL ERROR: ${error.message}`);
+    vscode.window.showErrorMessage(`Antigravity Auto Accept failed to activate: ${error.message}`);
   }
 }
 async function handleToggle(context) {
-  log("=== Toggle chamado ===");
-  log(`Estado anterior: ${isEnabled}`);
+  log("=== Toggle triggered ===");
+  log(`Previous state: ${isEnabled}`);
   try {
     isEnabled = !isEnabled;
-    log(`Novo estado: ${isEnabled}`);
+    log(`New state: ${isEnabled}`);
     await context.globalState.update("auto-accept-free-enabled", isEnabled);
     updateStatusBar();
     if (isEnabled) {
-      log("Auto Accept: ATIVADO");
-      vscode.window.showInformationMessage("Auto Accept FREE est\xE1 ativo! \u{1F680}");
+      log("Auto Accept: ENABLED");
+      vscode.window.showInformationMessage("Antigravity Auto Accept is enabled.");
       await startPolling();
     } else {
-      log("Auto Accept: DESATIVADO");
+      log("Auto Accept: DISABLED");
       await stopPolling();
     }
-    log("=== Toggle completo ===");
+    log("=== Toggle completed ===");
   } catch (e) {
-    log(`Erro no toggle: ${e.message}`);
+    log(`Toggle failed: ${e.message}`);
   }
 }
 async function handleBackgroundToggle(context) {
@@ -4327,10 +4609,10 @@ async function handleBackgroundToggle(context) {
     return;
   }
   lastBackgroundToggleTs = now;
-  log("Background toggle clicado");
+  log("Background toggle clicked");
   const cdpAvailable = cdpHandler ? await cdpHandler.isCDPAvailable() : false;
   if (!backgroundModeEnabled && !cdpAvailable) {
-    vscode.window.showWarningMessage("Background Mode requer CDP ativo (porta 9000). Use: Auto Accept FREE: Setup CDP");
+    vscode.window.showWarningMessage(`Background mode requires CDP on port ${CDP_PORT}. Run: Antigravity Auto Accept: Setup CDP`);
     return;
   }
   backgroundModeEnabled = !backgroundModeEnabled;
@@ -4342,41 +4624,36 @@ async function handleBackgroundToggle(context) {
   updateStatusBar();
 }
 async function handleSetupCDP() {
-  const platform = process.platform;
+  const autoResult = await createAndRunAutomaticCdpSetup();
+  if (autoResult.ok) {
+    if (autoResult.alreadyReady || autoResult.restarted) {
+      await globalContext.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
+      vscode.window.showInformationMessage(`CDP setup completed. Desktop shortcut: ${autoResult.shortcutPath}`);
+    } else {
+      vscode.window.showWarningMessage(
+        buildManualRestartNote(resolveEditorExecutable(currentIDE), autoResult.shortcutPath, CDP_PORT),
+        { modal: true },
+        "OK"
+      );
+    }
+    return;
+  }
+  const ide = (currentIDE || "").toLowerCase();
   let script = "";
-  let message = "";
-  if (platform === "win32") {
-    if ((currentIDE || "").toLowerCase() === "antigravity") {
-      script = `$exe = "$env:LOCALAPPDATA\\Programs\\Antigravity\\Antigravity.exe"; $env:ELECTRON_RUN_AS_NODE = $null; Stop-Process -Name Antigravity -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=9000' } else { Write-Host 'Antigravity n\xE3o encontrado em' $exe }`;
-      message = "Script para Antigravity copiado! Cole no PowerShell e execute.";
-    } else {
-      script = `$exe = "$env:LOCALAPPDATA\\Programs\\cursor\\Cursor.exe"; Stop-Process -Name cursor -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=9000' } else { Write-Host 'Cursor n\xE3o encontrado em' $exe }`;
-      message = "Script para Cursor copiado! Cole no PowerShell e execute.";
-    }
-  } else if (platform === "darwin") {
-    if ((currentIDE || "").toLowerCase() === "antigravity") {
-      script = `pkill Antigravity 2>/dev/null; sleep 2; open -n -a Antigravity --args --remote-debugging-port=9000`;
-      message = "Script para Antigravity (macOS) copiado!";
-    } else {
-      script = `pkill Cursor 2>/dev/null; sleep 2; open -n -a Cursor --args --remote-debugging-port=9000`;
-      message = "Script para Cursor (macOS) copiado!";
-    }
+  if (process.platform === "win32") {
+    script = ide === "antigravity" ? `$exe = "$env:LOCALAPPDATA\\Programs\\Antigravity\\Antigravity.exe"; Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue; Stop-Process -Name Antigravity -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=${CDP_PORT}' } else { Write-Host 'Antigravity executable not found:' $exe }` : `$exe = "$env:LOCALAPPDATA\\Programs\\cursor\\Cursor.exe"; Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue; Stop-Process -Name Cursor -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=${CDP_PORT}' } else { Write-Host 'Cursor executable not found:' $exe }`;
+  } else if (process.platform === "darwin") {
+    script = ide === "antigravity" ? `pkill Antigravity 2>/dev/null; sleep 2; open -n -a Antigravity --args --remote-debugging-port=${CDP_PORT}` : `pkill Cursor 2>/dev/null; sleep 2; open -n -a Cursor --args --remote-debugging-port=${CDP_PORT}`;
   } else {
-    if ((currentIDE || "").toLowerCase() === "antigravity") {
-      script = `pkill antigravity 2>/dev/null; sleep 2; antigravity --remote-debugging-port=9000 &`;
-      message = "Script para Antigravity (Linux) copiado!";
-    } else {
-      script = `pkill cursor 2>/dev/null; sleep 2; cursor --remote-debugging-port=9000 &`;
-      message = "Script para Cursor (Linux) copiado!";
-    }
+    script = ide === "antigravity" ? `pkill antigravity 2>/dev/null; sleep 2; antigravity --remote-debugging-port=${CDP_PORT} &` : `pkill cursor 2>/dev/null; sleep 2; cursor --remote-debugging-port=${CDP_PORT} &`;
   }
   await vscode.env.clipboard.writeText(script);
-  vscode.window.showInformationMessage(message);
+  vscode.window.showWarningMessage(`Automatic setup failed: ${autoResult.error}. A manual setup command was copied to your clipboard.`);
 }
 async function startPolling() {
   if (pollTimer)
     clearInterval(pollTimer);
-  log("Auto Accept: Iniciando polling...");
+  log("Auto Accept: Starting polling...");
   await refreshRuntimeSafeCommands();
   await refreshAntigravityDiscoveredCommands();
   const getCdpConfig = (quiet = false) => ({
@@ -4400,13 +4677,13 @@ async function startPolling() {
         });
       }, 1e3);
     } catch (e) {
-      log(`CDP n\xE3o dispon\xEDvel: ${e.message}`);
+      log(`CDP unavailable: ${e.message}`);
     }
   }
   if ((currentIDE || "").toLowerCase() === "antigravity") {
     const cdpConnected = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
     if (!cdpConnected) {
-      log("CDP n\xE3o conectado. Usando fallback por comandos nativos (accept/run/allow/continue).");
+      log("CDP not connected. Using native command fallback (accept/run/allow/continue).");
     }
   }
   await executeAcceptCommandsForIDE();
@@ -4430,7 +4707,7 @@ async function startPolling() {
     } catch (e) {
     }
   }, pollFrequency);
-  log(`Polling iniciado: ${pollFrequency}ms`);
+  log(`Polling started: ${pollFrequency}ms`);
 }
 async function stopPolling() {
   if (pollTimer) {
@@ -4444,7 +4721,7 @@ async function stopPolling() {
   if (cdpHandler) {
     await cdpHandler.stop();
   }
-  log("Auto Accept: Polling parado");
+  log("Auto Accept: Polling stopped");
 }
 async function restartPolling() {
   await stopPolling();
@@ -4460,12 +4737,12 @@ function updateStatusBar() {
   if (isEnabled) {
     let statusText = "ON";
     let icon = "$(check)";
-    let tooltip = `Auto Accept FREE est\xE1 ativo (${pollFrequency}ms)`;
+    let tooltip = `Antigravity Auto Accept is active (${pollFrequency}ms)`;
     const cdpConnected = cdpHandler && cdpHandler.getConnectionCount() > 0;
     if (cdpConnected) {
-      tooltip += " | CDP Conectado";
+      tooltip += " | CDP connected";
     } else if ((currentIDE || "").toLowerCase() === "antigravity") {
-      tooltip += " | CDP desconectado";
+      tooltip += " | CDP disconnected";
     }
     statusBarItem.text = `${icon} Auto Accept: ${statusText}`;
     statusBarItem.tooltip = tooltip;
@@ -4473,16 +4750,16 @@ function updateStatusBar() {
     if (statusBackgroundItem) {
       if (backgroundModeEnabled) {
         statusBackgroundItem.text = "$(sync~spin) Background: ON";
-        statusBackgroundItem.tooltip = "Background Mode ativo";
+        statusBackgroundItem.tooltip = "Background mode is active";
       } else {
         statusBackgroundItem.text = "$(globe) Background: OFF";
-        statusBackgroundItem.tooltip = "Clique para ativar Background Mode";
+        statusBackgroundItem.tooltip = "Click to enable background mode";
       }
       statusBackgroundItem.show();
     }
   } else {
     statusBarItem.text = "$(circle-slash) Auto Accept: OFF";
-    statusBarItem.tooltip = "Clique para ativar Auto Accept FREE";
+    statusBarItem.tooltip = "Click to enable Antigravity Auto Accept";
     statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
     if (statusBackgroundItem) {
       statusBackgroundItem.hide();

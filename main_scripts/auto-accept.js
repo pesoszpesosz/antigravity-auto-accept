@@ -1,11 +1,11 @@
-/**
- * Auto Accept Agent FREE - Script injetável
- * Versão gratuita e open-source
+﻿/**
+ * Antigravity Auto Accept - Injected script
+ * Free and open-source edition
  * 
- * Funcionalidades:
- * - Clica automaticamente em botões de "accept", "keep", "apply"
- * - Modo background: alterna entre abas automaticamente
- * - Bloqueia comandos perigosos
+ * Features:
+ * - Automatically clicks "accept", "keep", and "apply" actions
+ * - Background mode support
+ * - Blocks dangerous command patterns
  */
 (function() {
     'use strict';
@@ -13,10 +13,10 @@
     if (typeof window === 'undefined') return;
 
     const log = (msg) => console.log(`[AutoAcceptFREE] ${msg}`);
-    log('Script carregado');
+    log('Script loaded');
 
     // =================================================================
-    // UTILITÁRIOS DO DOM
+    // DOM UTILITIES
     // =================================================================
 
     const getDocuments = (root = document) => {
@@ -68,7 +68,7 @@
     };
 
     // =================================================================
-    // SELETORES DE BOTÕES
+    // BUTTON SELECTORS
     // =================================================================
 
     // Seletores para diferentes IDEs
@@ -90,7 +90,7 @@
         'button[data-action="accept"]',
         '[class*="cursor"] [class*="accept"]',
         
-        // Genéricos
+        // Generic
         'button:contains("Accept")',
         'button:contains("Keep")',
         'button:contains("Apply")',
@@ -98,7 +98,7 @@
         '[role="button"]:contains("Accept")'
     ];
 
-    // Botões de terminal
+    // Terminal buttons
     const TERMINAL_BUTTON_SELECTORS = [
         '[data-testid="run-in-terminal"]',
         'button[title*="Run in terminal"]',
@@ -108,7 +108,7 @@
     ];
 
     // =================================================================
-    // FUNÇÃO PRINCIPAL: CLICAR BOTÕES
+    // MAIN FUNCTION: CLICK BUTTONS
     // =================================================================
 
     function getActionText(el) {
@@ -356,7 +356,7 @@
 
         const ACTION_NODE_SELECTOR = 'button, [role="button"], a[role="button"]';
 
-        // 1) Prioridade: prompts de permissao (Always Allow / Allow Once / Allow)
+        // 1) Priority: permission prompts (Always Allow / Allow Once / Allow)
         const promptContainers = queryAll('[role="dialog"], .notification-toast, .notification-list-item, .monaco-dialog-box, .monaco-dialog-modal-block, .chat-tool-call, .chat-tool-response, [class*="tool-call"], [data-testid*="tool-call"]');
         const allActionButtons = [];
         const seenActionButtons = new Set();
@@ -406,7 +406,7 @@
             });
 
             if (alwaysAllow && clickElement(alwaysAllow, 'permission')) {
-                log('Permissao de URL aprovada com "Always Allow"');
+                log('URL permission approved with "Always Allow"');
                 return clickedCount;
             }
 
@@ -416,7 +416,7 @@
             });
 
             if (allowOnce && clickElement(allowOnce, 'permission')) {
-                log('Permissao de URL aprovada com "Allow Once"');
+                log('URL permission approved with "Allow Once"');
                 return clickedCount;
             }
 
@@ -429,7 +429,7 @@
             });
 
             if (allowButton && clickElement(allowButton, 'permission')) {
-                log(`Permissao aprovada automaticamente: "${getActionText(allowButton)}"`);
+                log(`Permission approved automatically: "${getActionText(allowButton)}"`);
                 return clickedCount;
             }
 
@@ -441,7 +441,7 @@
             });
 
             if (primaryButton && clickElement(primaryButton, 'permission')) {
-                log(`Permissao aprovada por botao primario: "${getActionText(primaryButton)}"`);
+                log(`Permission approved via primary button: "${getActionText(primaryButton)}"`);
                 return clickedCount;
             }
 
@@ -453,7 +453,7 @@
             });
 
             if (fallbackAllow && clickElement(fallbackAllow, 'permission')) {
-                log(`Permissao aprovada por fallback: "${getActionText(fallbackAllow)}"`);
+                log(`Permission approved via fallback: "${getActionText(fallbackAllow)}"`);
                 return clickedCount;
             }
         }
@@ -481,7 +481,7 @@
             return null;
         };
 
-        // 1.5) Prompt de execucao de comando (ex.: Reject | Run Alt+↵)
+        // 1.5) Command execution prompt (example: Reject | Run Alt+Enter)
         const hasGlobalStepInput = hasStepInputMarkers();
         const hasStrictStepInput = (() => {
             for (const doc of getDocuments()) {
@@ -495,13 +495,13 @@
             return false;
         })();
         const hasGlobalRecoveryError = hasErrorRecoveryMarkers();
-        // 1.55) Recuperacao automatica em erro do agente (Continue Generating)
+        // 1.55) Automatic recovery after agent error (Continue Generating)
         if (hasGlobalRecoveryError) {
             for (const btn of allActionButtons) {
                 const text = getActionText(btn);
                 const isContinueGenerating = text.includes('continue generating') || /^continue(\b|\s)/i.test(text);
                 if (isContinueGenerating && clickElement(btn)) {
-                    log(`Fluxo recuperado automaticamente apos erro: "${text}"`);
+                    log(`Flow recovered automatically after error: "${text}"`);
                     return clickedCount;
                 }
             }
@@ -584,12 +584,12 @@
             runCandidates.sort((a, b) => b.score - a.score);
             const best = runCandidates[0];
             if (clickElement(best.btn, 'run-prompt')) {
-                log(`Execucao aprovada automaticamente: "${best.text}" (score=${best.score})`);
+                log(`Execution approved automatically: "${best.text}" (score=${best.score})`);
                 return clickedCount;
             }
         }
 
-        // 1.51) Fallback para Run em elementos nao-padrao
+        // 1.51) Fallback for Run in non-standard elements
         if (hasGlobalStepInput) {
             for (const container of promptContainers) {
                 const runFallback = getInteractiveNodes(container).find(el => {
@@ -615,13 +615,13 @@
                 });
 
                 if (runFallback && clickElement(runFallback, 'run-prompt')) {
-                    log(`Execucao aprovada por fallback: "${getActionText(runFallback)}"`);
+                    log(`Execution approved via fallback: "${getActionText(runFallback)}"`);
                     return clickedCount;
                 }
             }
         }
 
-        // 1.52) Fallback global estrito para "Run command?" quando container nao foi identificado
+        // 1.52) Strict global fallback for "Run command?" when the container is not identified
         {
             const findRunPromptContext = (btn) => {
                 let node = btn;
@@ -703,13 +703,13 @@
                 strictRunCandidates.sort((a, b) => b.score - a.score);
                 const bestStrictRun = strictRunCandidates[0];
                 if (clickElement(bestStrictRun.btn, 'run-prompt')) {
-                    log(`Execucao aprovada por fallback global estrito: "${bestStrictRun.text}" (score=${bestStrictRun.score})`);
+                    log(`Execution approved via strict global fallback: "${bestStrictRun.text}" (score=${bestStrictRun.score})`);
                     return clickedCount;
                 }
             }
         }
 
-        // 1.56) Alguns fluxos escondem o Run atras de um botao Expand
+        // 1.56) Some flows hide Run behind an Expand button
         if (hasStrictStepInput) {
             const state = window.__autoAcceptFreeState || {};
             const now = Date.now();
@@ -735,14 +735,14 @@
                     if ((hasRunOrRejectNearby || hasStepMarkerNearby) && clickElement(btn)) {
                         state.lastExpandClickAt = now;
                         window.__autoAcceptFreeState = state;
-                        log(`Step input expandido automaticamente: "${text}"`);
+                        log(`Step input expanded automatically: "${text}"`);
                         return clickedCount;
                     }
                 }
             }
         }
 
-        // 1.57) Fluxos com "Ask every time" podem expor botao "Allow"
+        // 1.57) "Ask every time" flows may expose an "Allow" button
         if (hasGlobalStepInput) {
             for (const btn of allActionButtons) {
                 const text = getActionText(btn);
@@ -757,7 +757,7 @@
                 const hasInputSignals = ['step requires input', 'ask every time', 'requires input', 'permission', 'browser'].some(marker => containerText.includes(marker));
 
                 if ((hasInputSignals || hasRejectNearby) && clickElement(btn)) {
-                    log(`Permissao de etapa aprovada automaticamente: "${text}"`);
+                    log(`Step permission approved automatically: "${text}"`);
                     return clickedCount;
                 }
             }
@@ -768,7 +768,7 @@
             return clickedCount;
         }
 
-        // 1.6) Continuar fluxo travado/interrompido
+        // 1.6) Continue paused/interrupted flow
         for (const btn of allActionButtons) {
             const text = getActionText(btn);
             const isContinueButton = /\bcontinue\b/i.test(text);
@@ -784,7 +784,7 @@
             const hasInputSignal = ['step requires input', 'requires input', 'ask every time', 'continue generating'].some(word => containerText.includes(word));
 
             if ((hasPauseSignal || hasControlPair || hasInputSignal) && clickElement(btn)) {
-                log(`Fluxo retomado automaticamente: "${text}"`);
+                log(`Flow resumed automatically: "${text}"`);
                 return clickedCount;
             }
         }
@@ -793,7 +793,7 @@
         // Remaining logic already handles explicit command/permission/recovery prompts above.
         return clickedCount;
 
-        // 2) Fluxo normal: aceitar/aplicar, evitando acoes negativas
+        // 2) Normal flow: accept/apply while avoiding negative actions
         if (isUserTyping()) {
             return clickedCount;
         }
@@ -837,7 +837,7 @@
 
             if (isAllowedAction) {
                 if (clickElement(btn)) {
-                    log(`Clicado botao: "${actionText}"`);
+                    log(`Clicked button: "${actionText}"`);
                 }
             }
         }
@@ -854,7 +854,7 @@
             const t = getActionText(parent || icon);
             const safeCheckContext = t.includes('accept') || t.includes('apply') || t.includes('keep');
             if (parent && safeCheckContext && clickElement(parent)) {
-                log('Clicado botao com icone de check');
+                log('Clicked button com icone de check');
             }
         }
 
@@ -971,13 +971,13 @@
 
         const ide = (window.__autoAcceptFreeState?.ide || '').toLowerCase();
         if (ide === 'antigravity') {
-            log('Overlay visual desativado no Antigravity para evitar tela preta');
+            log('Visual overlay disabled on Antigravity to prevent black-screen effects');
             return;
         }
 
-        log('Montando overlay...');
+        log('Mounting overlay...');
 
-        // Posicionar sobre o painel lateral
+        // Position above side panel
         const panelSelectors = [
             '#workbench\\.parts\\.auxiliarybar',
             '#workbench\\.parts\\.sidebar',
@@ -995,7 +995,7 @@
         }
 
         if (!panel) {
-            log('Painel lateral nao encontrado; overlay nao sera exibido');
+            log('Side panel not found; overlay will not be shown');
             return;
         }
 
@@ -1031,7 +1031,7 @@
         overlay._resizeObserver = resizeObserver;
 
         requestAnimationFrame(() => overlay.classList.add('visible'));
-        log('Overlay montado');
+        log('Overlay mounted');
     }
 
     function dismountOverlay() {
@@ -1085,7 +1085,7 @@
     }
 
     // =================================================================
-    // ESTADO E API PÚBLICA
+    // STATE AND PUBLIC API
     // =================================================================
 
     if (!window.__autoAcceptFreeState) {
@@ -1118,9 +1118,9 @@
     window.__autoAcceptStart = function(config) {
         const state = window.__autoAcceptFreeState;
 
-        // Parar se já estiver rodando
+        // Stop previous run if already running
         if (state.isRunning) {
-            log('Já rodando, parando primeiro...');
+            log('Already running, stopping current session first...');
             window.__autoAcceptStop();
         }
 
@@ -1136,7 +1136,7 @@
         state.lastPermissionX = 0;
         state.lastPermissionY = 0;
 
-        log(`Iniciando ${state.mode} mode para ${state.ide}...`);
+        log(`Starting ${state.mode} mode for ${state.ide}...`);
 
         if (state.domObserver) {
             try {
@@ -1164,12 +1164,12 @@
                 characterData: false
             });
             state.domObserver = observer;
-            log('Observer DOM iniciado');
+            log('DOM observer started');
         } catch (e) {
-            log(`Observer DOM indisponivel: ${e.message}`);
+            log(`DOM observer unavailable: ${e.message}`);
         }
 
-        // SEMPRE iniciar o loop de cliques
+        // Always start click loop
         state.clickInterval = setInterval(() => {
             if (state.isRunning) {
                 const clicked = clickAcceptButtons();
@@ -1179,14 +1179,14 @@
             }
         }, 300);
 
-        log('Loop de cliques iniciado (300ms)');
+        log('Click loop started (300ms)');
 
-        // Se background mode, iniciar tab cycling também
+        // If background mode was requested, tab cycling remains disabled for safety
         if (config.isBackgroundMode) {
-            log('Background mode solicitado, mas tab cycling foi desativado para seguranca.');
+            log('Background mode requested, but tab cycling remains disabled for safety.');
         }
 
-        log('Ativo!');
+        log('Running');
     };
 
     window.__autoAcceptStop = function() {
@@ -1206,7 +1206,7 @@
         }
 
         dismountOverlay();
-        log('Parado');
+        log('Stopped');
     };
 
     window.__autoAcceptUpdateBannedCommands = function(commands) {
@@ -1215,5 +1215,7 @@
         }
     };
 
-    log('Pronto!');
+    log('Ready');
 })();
+
+

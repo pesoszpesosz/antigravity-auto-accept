@@ -1,14 +1,14 @@
 {
-  "name": "auto-accept-agent-free",
-  "displayName": "Auto Accept Agent FREE",
-  "description": "Hands-free AI agent approvals for Antigravity, Cursor, and VS Code. Auto-click Always Allow, Run, Continue, and recovery prompts.",
-  "version": "1.2.9",
-  "publisher": "ZNORK",
+  "name": "antigravity-auto-accept",
+  "displayName": "Antigravity Auto Accept",
+  "description": "Automatically accepts Antigravity agent approval prompts with optional CDP-assisted setup.",
+  "version": "1.0.4",
+  "publisher": "pesosz",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/open-source/auto-accept-agent-free"
+    "url": "https://github.com/pesoszpesosz/antigravity-auto-accept"
   },
   "categories": [
     "Machine Learning",
@@ -43,19 +43,19 @@
     "commands": [
       {
         "command": "auto-accept-free.toggle",
-        "title": "Auto Accept FREE: Toggle ON/OFF"
+        "title": "Antigravity Auto Accept: Toggle ON/OFF"
       },
       {
         "command": "auto-accept-free.toggleBackground",
-        "title": "Auto Accept FREE: Toggle Background Mode"
+        "title": "Antigravity Auto Accept: Toggle Background Mode"
       },
       {
         "command": "auto-accept-free.setupCDP",
-        "title": "Auto Accept FREE: Setup CDP"
+        "title": "Antigravity Auto Accept: Setup CDP"
       }
     ],
     "configuration": {
-      "title": "Auto Accept Agent FREE",
+      "title": "Antigravity Auto Accept",
       "properties": {
         "autoAcceptFree.pollInterval": {
           "type": "number",

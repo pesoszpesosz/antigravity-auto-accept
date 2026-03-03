@@ -39,7 +39,24 @@ npm run build:vsix
 
 VSIX output appears in repo root.
 
-## 4) Install/Verify In Antigravity
+## 4) Publish VSIX File In GitHub Repo
+
+Copy the built VSIX into `release/` (tracked by git in this project):
+
+```powershell
+New-Item -ItemType Directory -Force .\release | Out-Null
+Copy-Item .\antigravity-auto-accept-1.0.4.vsix .\release\antigravity-auto-accept-1.0.4.vsix -Force
+$h = Get-FileHash .\release\antigravity-auto-accept-1.0.4.vsix -Algorithm SHA256
+"$($h.Hash.ToLower())  antigravity-auto-accept-1.0.4.vsix" | Set-Content .\release\antigravity-auto-accept-1.0.4.vsix.sha256
+```
+
+After push, share these links:
+
+- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/main/release/antigravity-auto-accept-1.0.4.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix.sha256
+
+## 5) Install/Verify In Antigravity
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-antigravity-cdp.ps1
@@ -51,7 +68,7 @@ Then in Antigravity:
 2. Select your built `.vsix`
 3. Reload window
 
-## 5) Publish To VS Marketplace / Open VSX
+## 6) Publish To VS Marketplace / Open VSX
 
 This repo includes CI workflow:
 
@@ -65,13 +82,13 @@ Set repository secrets in GitHub:
 Then push a tag:
 
 ```bash
-git tag v1.2.10
-git push origin v1.2.10
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
 Workflow will package and publish.
 
-## 6) Save Working Runtime State Before Releases
+## 7) Save Working Runtime State Before Releases
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\save-working-state.ps1 -ZipSnapshot

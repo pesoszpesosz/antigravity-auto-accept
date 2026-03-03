@@ -3,6 +3,9 @@ node_modules/
 
 # Build artifacts
 *.vsix
+!release/
+!release/*.vsix
+!release/*.sha256
 
 # OS files
 .DS_Store
@@ -15,6 +18,7 @@ Thumbs.db
 *.log
 *.tmp
 state/
+manual_test/
 
 # Publishing notes (personal)
 extension_status.txt

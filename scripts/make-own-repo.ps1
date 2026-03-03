@@ -8,7 +8,7 @@ param(
     [Parameter(Mandatory = $true)]
     [string]$Publisher,
 
-    [string]$DisplayName = "Auto Accept Agent FREE",
+    [string]$DisplayName = "Antigravity Auto Accept",
     [string]$Description = "Hands-free AI agent approvals for Antigravity, Cursor, and VS Code.",
     [switch]$UpdateGitRemote
 )

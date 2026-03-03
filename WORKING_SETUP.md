@@ -89,9 +89,9 @@ This script:
 
 ## 6) Extension Commands
 
-- `Auto Accept FREE: Toggle ON/OFF`
-- `Auto Accept FREE: Toggle Background Mode`
-- `Auto Accept FREE: Setup CDP`
+- `Antigravity Auto Accept: Toggle ON/OFF`
+- `Antigravity Auto Accept: Toggle Background Mode`
+- `Antigravity Auto Accept: Setup CDP`
 
 ## 7) Create A Full Snapshot (State Backup)
 
@@ -124,4 +124,10 @@ Snapshot includes:
 
 4. Prompt still hanging:
 - keep prompt open and collect latest Auto Accept log from:
-  - `%APPDATA%\Antigravity\logs\...\2-Auto Accept FREE.log`
+  - `%APPDATA%\Antigravity\logs\...\2-Antigravity Auto Accept.log`
+
+5. Auto setup restarts the wrong profile/window:
+- close all Antigravity windows
+- launch desktop shortcut `Start Antigravity (CDP 9000).lnk`
+- if needed run `Antigravity Auto Accept: Setup CDP` again
+- first-time setup can require `2-3` restarts in some environments

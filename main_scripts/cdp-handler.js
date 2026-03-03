@@ -1,4 +1,4 @@
-const WebSocket = require('ws');
+﻿const WebSocket = require('ws');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -6,7 +6,7 @@ const path = require('path');
 const BASE_PORT = 9000;
 const PORT_RANGE = 3;
 
-// Carregar script auto-accept.js
+// Load auto-accept.js script
 let _autoAcceptScript = null;
 function getAutoAcceptScript() {
     if (_autoAcceptScript) return _autoAcceptScript;
@@ -24,7 +24,7 @@ function getAutoAcceptScript() {
         }
     }
 
-    throw new Error(`auto-accept.js não encontrado. __dirname=${__dirname}`);
+    throw new Error(`auto-accept.js not found. __dirname=${__dirname}`);
 }
 
 class CDPHandler {
@@ -61,7 +61,7 @@ class CDPHandler {
         });
 
         if (!quiet || this._lastConfigHash !== configHash) {
-            this.log(`Escaneando portas ${BASE_PORT - PORT_RANGE} a ${BASE_PORT + PORT_RANGE}...`);
+            this.log(`Scanning ports ${BASE_PORT - PORT_RANGE} to ${BASE_PORT + PORT_RANGE}...`);
             this.log(`Config: background=${config.isBackgroundMode}, ide=${config.ide}`);
         }
         this._lastConfigHash = configHash;
@@ -72,7 +72,7 @@ class CDPHandler {
                 if (pages.length > 0) {
                     const newTargets = pages.filter(p => !this.connections.has(`${port}:${p.id}`));
                     if (!quiet || newTargets.length > 0) {
-                        this.log(`Porta ${port}: ${pages.length} página(s) encontrada(s)`);
+                        this.log(`Port ${port}: ${pages.length} page(s) found`);
                     }
                     for (const page of pages) {
                         const id = `${port}:${page.id}`;
@@ -83,7 +83,7 @@ class CDPHandler {
                     }
                 }
             } catch (e) { 
-                // Porta não disponível
+                // Port not available
             }
         }
     }
@@ -145,7 +145,7 @@ class CDPHandler {
             ws.on('open', () => {
                 clearTimeout(timeout);
                 this.connections.set(id, { ws, injected: false, mode: null });
-                this.log(`Conectado à página ${id}`);
+                this.log(`Connected to page ${id}`);
                 resolve(true);
             });
             ws.on('error', () => {
@@ -155,7 +155,7 @@ class CDPHandler {
             ws.on('close', () => {
                 clearTimeout(timeout);
                 this.connections.delete(id);
-                this.log(`Desconectado da página ${id}`);
+                this.log(`Disconnected from page ${id}`);
             });
         });
     }
@@ -169,7 +169,7 @@ class CDPHandler {
         const quiet = !!config?.quiet;
 
         try {
-            // Verificar se o script ainda existe (webviews podem recarregar)
+            // Check whether script is still present (webviews can reload)
             if (conn.injected) {
                 try {
                     const existsRes = await this._evaluate(id, 'typeof window.__autoAcceptStart === "function"');
@@ -178,7 +178,7 @@ class CDPHandler {
                         conn.injected = false;
                         conn.mode = null;
                         if (!quiet) {
-                            this.log(`Script ausente em ${id}; reinjetando...`);
+                            this.log(`Script missing in ${id}; reinjecting...`);
                         }
                     }
                 } catch (e) {
@@ -187,26 +187,26 @@ class CDPHandler {
                 }
             }
 
-            // Injetar script se ainda não foi injetado
+            // Inject script when needed
             if (!conn.injected) {
                 const script = getAutoAcceptScript();
                 if (!quiet) {
-                    this.log(`Injetando script em ${id} (${(script.length / 1024).toFixed(1)}KB)...`);
+                    this.log(`Injecting script into ${id} (${(script.length / 1024).toFixed(1)}KB)...`);
                 }
                 await this._safeEvaluate(id, script, 1);
                 conn.injected = true;
                 if (!quiet) {
-                    this.log(`Script injetado em ${id}`);
+                    this.log(`Script injected into ${id}`);
                 }
             }
 
-            // Se mudou o modo, parar o atual primeiro
+            // If mode changed, stop current mode first
             if (conn.mode !== null && conn.mode !== mode) {
-                this.log(`Modo mudou de ${conn.mode} para ${mode}, reiniciando...`);
+                this.log(`Mode changed from ${conn.mode} to ${mode}, restarting...`);
                 await this._safeEvaluate(id, 'if(window.__autoAcceptStop) window.__autoAcceptStop()', 1);
             }
 
-            // Iniciar com configuração atual
+            // Start with current configuration
             let isRunning = true;
             try {
                 const runningRes = await this._safeEvaluate(id, '!!(window.__autoAcceptFreeState && window.__autoAcceptFreeState.isRunning)', 1);
@@ -222,13 +222,13 @@ class CDPHandler {
                     bannedCommands: config.bannedCommands || []
                 });
                 if (!quiet) {
-                    this.log(`Chamando __autoAcceptStart em ${id}`);
+                    this.log(`Calling __autoAcceptStart in ${id}`);
                 }
                 await this._safeEvaluate(id, `if(window.__autoAcceptStart) window.__autoAcceptStart(${configJson})`, 1);
                 conn.mode = mode;
             }
         } catch (e) {
-            this.log(`Falha ao injetar em ${id}: ${e.message}`);
+            this.log(`Failed to inject into ${id}: ${e.message}`);
         }
     }
 
@@ -305,3 +305,4 @@ class CDPHandler {
 }
 
 module.exports = { CDPHandler };
+
