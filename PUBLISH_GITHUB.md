@@ -52,9 +52,9 @@ $h = Get-FileHash .\release\antigravity-auto-accept-1.0.4.vsix -Algorithm SHA256
 
 After push, share these links:
 
-- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/main/release/antigravity-auto-accept-1.0.4.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix.sha256
+- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
 
 ## 5) Install/Verify In Antigravity
 

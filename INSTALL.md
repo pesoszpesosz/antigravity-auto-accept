@@ -5,14 +5,14 @@
 Choose one:
 
 - GitHub file page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/blob/main/release/antigravity-auto-accept-1.0.4.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
 - Direct VSIX download:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix
+  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
 
 Optional integrity check:
 
 - SHA256 file:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix.sha256
+  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
 
 ## 2) Install VSIX In Antigravity
 

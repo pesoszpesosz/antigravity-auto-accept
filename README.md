@@ -4,9 +4,9 @@ Auto-accept extension for Antigravity agent approval prompts, with optional CDP-
 
 ## Download v1.0.4
 
-- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/main/release/antigravity-auto-accept-1.0.4.vsix
-- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix
-- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/main/release/antigravity-auto-accept-1.0.4.vsix.sha256
+- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
+- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
+- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
 
 ## Install In 60 Seconds (Users)
 
