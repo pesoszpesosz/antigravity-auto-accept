@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity Auto Accept",
   "description": "Automatically accepts Antigravity agent approval prompts with optional CDP-assisted setup.",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "publisher": "pesosz",
   "license": "MIT",
   "icon": "media/icon.png",

@@ -1,9 +1,9 @@
-## Antigravity Auto Accept v1.0.4
+## Antigravity Auto Accept v1.0.5
 
 ### Included assets
 
-- `antigravity-auto-accept-1.0.4.vsix`
-- `antigravity-auto-accept-1.0.4.vsix.sha256`
+- `antigravity-auto-accept-1.0.5.vsix`
+- `antigravity-auto-accept-1.0.5.vsix.sha256`
 
 ### What changed
 
@@ -14,9 +14,10 @@
 
 ### Install
 
-1. Download `antigravity-auto-accept-1.0.4.vsix` from this release.
+1. Download `antigravity-auto-accept-1.0.5.vsix` from this release.
 2. In Antigravity, run: `Extensions: Install from VSIX...`
 3. Select the VSIX and reload.
 4. If prompted for setup, click `Set Up Now`.
 
 Detailed install/fallback guide: `INSTALL.md`.
+

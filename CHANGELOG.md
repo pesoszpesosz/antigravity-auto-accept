@@ -2,6 +2,15 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.0.5] - 2026-03-03
+
+### Changed
+- Bumped extension version to `1.0.5` for a new publishable release.
+- Updated release/docs/install references from `1.0.4` to `1.0.5`.
+
+### Fixed
+- Restored extension icon to the exact artwork used in `1.0.3`.
+
 ## [1.0.4] - 2026-03-03
 
 ### Changed

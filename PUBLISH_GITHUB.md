@@ -45,16 +45,16 @@ Copy the built VSIX into `release/` (tracked by git in this project):
 
 ```powershell
 New-Item -ItemType Directory -Force .\release | Out-Null
-Copy-Item .\antigravity-auto-accept-1.0.4.vsix .\release\antigravity-auto-accept-1.0.4.vsix -Force
-$h = Get-FileHash .\release\antigravity-auto-accept-1.0.4.vsix -Algorithm SHA256
-"$($h.Hash.ToLower())  antigravity-auto-accept-1.0.4.vsix" | Set-Content .\release\antigravity-auto-accept-1.0.4.vsix.sha256
+Copy-Item .\antigravity-auto-accept-1.0.5.vsix .\release\antigravity-auto-accept-1.0.5.vsix -Force
+$h = Get-FileHash .\release\antigravity-auto-accept-1.0.5.vsix -Algorithm SHA256
+"$($h.Hash.ToLower())  antigravity-auto-accept-1.0.5.vsix" | Set-Content .\release\antigravity-auto-accept-1.0.5.vsix.sha256
 ```
 
 After push, share these links:
 
-- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
+- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.5.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix.sha256
 
 ## 5) Install/Verify In Antigravity
 
@@ -82,8 +82,8 @@ Set repository secrets in GitHub:
 Then push a tag:
 
 ```bash
-git tag v1.0.4
-git push origin v1.0.4
+git tag v1.0.5
+git push origin v1.0.5
 ```
 
 Workflow will package and publish.
@@ -98,3 +98,4 @@ Latest snapshot pointers:
 
 - `state/LATEST_SNAPSHOT.txt`
 - `state/LATEST_SNAPSHOT_ZIP.txt`
+
