@@ -2,15 +2,6 @@
 
 Auto-accept extension for Antigravity agent approval prompts, with optional CDP-assisted setup on port `9000`.
 
-## Download v1.0.4
-
-- Release page: https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.4
-- VSIX (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix
-- SHA256 (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix.sha256
-- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
-- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
-- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
-
 ## Install In 60 Seconds (Users)
 
 1. Download `antigravity-auto-accept-1.0.4.vsix`.
@@ -65,4 +56,14 @@ Output:
 
 - Full runbook: [WORKING_SETUP.md](./WORKING_SETUP.md)
 - End-user install guide: [INSTALL.md](./INSTALL.md)
+- Complete user manual (all common scenarios): [USER_MANUAL.md](./USER_MANUAL.md)
 - Publishing guide: [PUBLISH_GITHUB.md](./PUBLISH_GITHUB.md)
+
+## Download v1.0.4
+
+- Release page: https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.4
+- VSIX (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix
+- SHA256 (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.4/antigravity-auto-accept-1.0.4.vsix.sha256
+- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.4.vsix
+- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix
+- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.4.vsix.sha256
