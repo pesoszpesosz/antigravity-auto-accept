@@ -1,4 +1,4 @@
-# Antigravity Auto Accept - Complete User Manual (v1.0.5)
+# Antigravity Auto Accept - Complete User Manual (v1.0.6)
 
 ## 1) What this extension does
 
@@ -9,7 +9,7 @@
 ## 2) Quick install (recommended)
 
 1. Download the release VSIX:
-   `antigravity-auto-accept-1.0.5.vsix`
+   `antigravity-auto-accept-1.0.6.vsix`
 2. Open Antigravity.
 3. Run `Extensions: Install from VSIX...`.
 4. Select the VSIX.
@@ -115,20 +115,22 @@ antigravity --remote-debugging-port=9000 &
 
 Use this exact VSIX file:
 
-- `release/antigravity-auto-accept-1.0.5.vsix`
+- `release/antigravity-auto-accept-1.0.6.vsix`
 
 Command:
 
 ```bash
-npx ovsx publish release/antigravity-auto-accept-1.0.5.vsix -p <OVSX_PAT>
+npx ovsx publish release/antigravity-auto-accept-1.0.6.vsix -p <OVSX_PAT>
 ```
 
 ## 9) Official links
 
 - Release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.5
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.6
 - VSIX download:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix
 - SHA256:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix.sha256
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix.sha256
+
+
 

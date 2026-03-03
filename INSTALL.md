@@ -1,31 +1,31 @@
-# Antigravity Auto Accept - User Install Guide (v1.0.5)
+# Antigravity Auto Accept - User Install Guide (v1.0.6)
 
 ## 1) Download
 
 Choose one:
 
 - Release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.5
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.6
 - Release asset (recommended):
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix
 - GitHub file page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.5.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.6.vsix
 - Direct VSIX download:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix
+  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix
 
 Optional integrity check:
 
 - SHA256 release asset:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix.sha256
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix.sha256
 - SHA256 file:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix.sha256
+  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix.sha256
 
 ## 2) Install VSIX In Antigravity
 
 1. Open Antigravity.
 2. Press `Ctrl+Shift+P`.
 3. Run `Extensions: Install from VSIX...`.
-4. Select `antigravity-auto-accept-1.0.5.vsix`.
+4. Select `antigravity-auto-accept-1.0.6.vsix`.
 5. Click `Reload` if prompted.
 
 ## 3) First-Run Setup Prompt
@@ -81,4 +81,6 @@ Expected:
 - HTTP `200`
 
 If status is not `200`, restart using the desktop shortcut again.
+
+
 

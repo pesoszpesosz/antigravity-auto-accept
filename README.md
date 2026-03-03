@@ -62,7 +62,7 @@ Start-Process $exe -ArgumentList '--remote-debugging-port=9000'
 ## Install Methods
 
 - Store/Open VSX: install directly from extension marketplace, then follow `Start Here (Store Install)` above.
-- Manual VSIX: `Extensions: Install from VSIX...` and choose `antigravity-auto-accept-1.0.5.vsix`.
+- Manual VSIX: `Extensions: Install from VSIX...` and choose `antigravity-auto-accept-1.0.6.vsix`.
 
 ## Developer Build
 
@@ -72,7 +72,7 @@ npm run build:vsix
 ```
 
 Output:
-- `antigravity-auto-accept-1.0.5.vsix`
+- `antigravity-auto-accept-1.0.6.vsix`
 
 ## More Docs
 
@@ -81,12 +81,14 @@ Output:
 - Complete user manual (all common scenarios): [USER_MANUAL.md](./USER_MANUAL.md)
 - Publishing guide: [PUBLISH_GITHUB.md](./PUBLISH_GITHUB.md)
 
-## Download v1.0.5
+## Download v1.0.6
 
-- Release page: https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.5
-- VSIX (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix
-- SHA256 (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.5/antigravity-auto-accept-1.0.5.vsix.sha256
-- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.5.vsix
-- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix
-- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.5.vsix.sha256
+- Release page: https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.6
+- VSIX (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix
+- SHA256 (release asset): https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix.sha256
+- VSIX (GitHub page): https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.6.vsix
+- VSIX (direct download): https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix
+- SHA256: https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix.sha256
+
+
 

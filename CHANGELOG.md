@@ -2,6 +2,13 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.0.6] - 2026-03-03
+
+### Changed
+- Bumped extension version to `1.0.6` for marketplace/Open VSX republish.
+- Updated current release/install links and docs from `1.0.5` to `1.0.6`.
+- Reworked marketplace README to be post-install and user-first.
+
 ## [1.0.5] - 2026-03-03
 
 ### Changed
