@@ -2,6 +2,16 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.0.8] - 2026-03-06
+
+### Changed
+- Made the control panel entry point the first thing explained in the public docs and packaged README.
+- Added explicit `v1.0.8` download links to the packaged README.
+- Added the free-build note plus Open VSX rating and GitHub feedback request to the top of the packaged README.
+
+### Fixed
+- Corrected the packaged README mismatch that left `1.0.7` users with stale extension-page content.
+
 ## [1.0.7] - 2026-03-06
 
 ### Changed

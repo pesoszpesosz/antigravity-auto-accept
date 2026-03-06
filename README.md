@@ -11,6 +11,19 @@ That helps a lot.
 
 Antigravity Auto Accept removes repetitive approval clicks in Antigravity and gives you a clear control panel for CDP status, launcher generation, and runtime control.
 
+## Current Release
+
+Current version:
+
+- `1.0.8`
+
+Download:
+
+- GitHub release page:
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.8
+- VSIX:
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.8/antigravity-auto-accept-1.0.8.vsix
+
 ## Open The Control Panel First
 
 This should be the first thing users look for after installation.
