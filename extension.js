@@ -808,6 +808,15 @@ function quoteCmdArg(arg) {
     return text;
 }
 
+function buildWindowsArgumentString(args = []) {
+    const normalizedArgs = Array.isArray(args)
+        ? args
+            .map(arg => String(arg ?? ''))
+            .filter(arg => arg.trim().length > 0)
+        : [];
+    return normalizedArgs.map(quoteCmdArg).join(' ');
+}
+
 function formatSpawnSyncError(result, fallbackMessage) {
     if (!result) return fallbackMessage;
     if (result.error?.message) {
@@ -1464,12 +1473,17 @@ function findExistingWindowsShortcutTemplate(exeInfo, port = cdpPort) {
     return null;
 }
 
-function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
+function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort, relaunchArgs = []) {
     const expectedPort = normalizeCdpPort(port, cdpPort);
     const template = findExistingWindowsShortcutTemplate(exeInfo, expectedPort);
     const configured = validateConfiguredExecutablePath(exeInfo);
+    const extraArgs = Array.isArray(relaunchArgs)
+        ? relaunchArgs.map(arg => String(arg ?? '')).filter(arg => arg.trim().length > 0)
+        : [];
+    const argumentString = buildWindowsArgumentString([`--remote-debugging-port=${expectedPort}`, ...extraArgs]);
     const canReuseTemplate = !!(
         template?.path &&
+        extraArgs.length === 0 &&
         path.resolve(template.path) !== path.resolve(shortcutPath) &&
         (!configured.hasOverride || (configured.valid && template?.details?.TargetPath && path.resolve(template.details.TargetPath) === path.resolve(configured.path)))
     );
@@ -1479,7 +1493,7 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
             return {
                 path: shortcutPath,
                 targetPath: template.details?.TargetPath || '',
-                arguments: template.details?.Arguments || `--remote-debugging-port=${expectedPort}`,
+                arguments: template.details?.Arguments || argumentString,
                 copiedFrom: template.path
             };
         }
@@ -1505,7 +1519,7 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
     const iconLocation = template?.details?.IconLocation || `${resolvedExePath},0`;
     const workDirEsc = escapePowerShellSingleQuoted(workingDirectory);
     const iconEsc = escapePowerShellSingleQuoted(iconLocation);
-    const argsEsc = escapePowerShellSingleQuoted(`--remote-debugging-port=${expectedPort}`);
+    const argsEsc = escapePowerShellSingleQuoted(argumentString);
     const psScript = [
         '$WScriptShell = New-Object -ComObject WScript.Shell',
         `$Shortcut = $WScriptShell.CreateShortcut('${shortcutEsc}')`,
@@ -1531,7 +1545,7 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
     return {
         path: shortcutPath,
         targetPath: resolvedExePath,
-        arguments: `--remote-debugging-port=${expectedPort}`
+        arguments: argumentString
     };
 }
 
@@ -1656,7 +1670,8 @@ async function saveLauncherForPort(port = cdpPort) {
 
     try {
         if (process.platform === 'win32') {
-            createWindowsLauncherShortcut(targetPath, exeInfo, expectedPort);
+            const relaunchArgs = getWindowsRelaunchArgs(exeInfo);
+            createWindowsLauncherShortcut(targetPath, exeInfo, expectedPort, relaunchArgs);
         } else {
             const launcherScript = buildPortableLauncherScript(exeInfo, expectedPort);
             if (!launcherScript) {
@@ -1968,9 +1983,19 @@ function getControlPanelHtml() {
   <script>
     const vscode = acquireVsCodeApi();
     const byId = (id) => document.getElementById(id);
+    let renderedPortValue = '';
+    let portInputDirty = false;
 
     function post(type, payload = {}) {
       vscode.postMessage({ type, ...payload });
+    }
+
+    function parsePortInputValue() {
+      return Number(String(byId('portInput').value || '').trim());
+    }
+
+    function refreshPortDraftState() {
+      portInputDirty = String(byId('portInput').value || '') !== renderedPortValue;
     }
 
     function setStatus(text, kind) {
@@ -1993,14 +2018,20 @@ function getControlPanelHtml() {
       byId('savedLauncherPath').textContent = state.savedLauncherPath || '-';
       byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
-      byId('portInput').value = String(state.cdpPort || '');
+      renderedPortValue = String(state.cdpPort || '');
+      if (!portInputDirty) {
+        byId('portInput').value = renderedPortValue;
+      }
       byId('pauseOnMismatch').checked = !!state.pauseOnCdpMismatch;
       byId('executablePath').textContent = state.executablePath || '-';
       byId('executablePathMeta').textContent = (state.executablePathSource ? ('Source: ' + state.executablePathSource + ' | ') : '') + (state.executablePathMessage || '-');
       byId('clearExecutable').disabled = !state.hasExecutableOverride;
 
       const s = state.cdpStatus || {};
-      byId('saveLauncher').disabled = !!(state.hasExecutableOverride && !state.executablePathValid);
+      const draftPort = parsePortInputValue();
+      const invalidDraftPort = !Number.isInteger(draftPort) || draftPort < 1 || draftPort > 65535;
+      byId('savePort').disabled = invalidDraftPort;
+      byId('saveLauncher').disabled = invalidDraftPort || !!(state.hasExecutableOverride && !state.executablePathValid);
       if (s.state === 'ok') setStatus(s.message || 'CDP is ready.', 'ok');
       else if (s.state === 'connecting') setStatus(s.message || 'CDP is starting.', 'warnc');
       else if (s.state === 'mcp_only') setStatus(s.message || 'MCP mode detected; fixed CDP launcher is not available.', 'warnc');
@@ -2016,8 +2047,15 @@ function getControlPanelHtml() {
     });
 
     byId('refresh').addEventListener('click', () => post('refresh'));
-    byId('savePort').addEventListener('click', () => post('savePort', { port: Number(byId('portInput').value) }));
-    byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: Number(byId('portInput').value) }));
+    byId('portInput').addEventListener('input', () => refreshPortDraftState());
+    byId('portInput').addEventListener('blur', () => refreshPortDraftState());
+    byId('savePort').addEventListener('click', () => {
+      const port = parsePortInputValue();
+      renderedPortValue = String(port);
+      portInputDirty = false;
+      post('savePort', { port });
+    });
+    byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: parsePortInputValue() }));
     byId('chooseExecutable').addEventListener('click', () => post('chooseExecutable'));
     byId('clearExecutable').addEventListener('click', () => post('clearExecutable'));
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));

@@ -267,6 +267,7 @@
                         state.lastPermissionClickAt = now;
                         state.lastPermissionX = rect.left + (rect.width / 2);
                         state.lastPermissionY = rect.top + (rect.height / 2);
+                        state.permissionApprovals = (state.permissionApprovals || 0) + 1;
                         window.__autoAcceptFreeState = state;
 
                         const origin = el.closest('[role="dialog"], .notification-toast, .notification-list-item, .monaco-dialog-box, .monaco-dialog-modal-block, .chat-tool-call, .chat-tool-response, [class*="tool-call"], [data-testid*="tool-call"]');
@@ -274,6 +275,13 @@
                             origin.setAttribute('data-aaf-permission-origin-at', String(now));
                         }
                     }
+                } catch (e) { }
+
+                try {
+                    const state = window.__autoAcceptFreeState || {};
+                    state.lastAction = reason || 'generic';
+                    state.lastActionLabel = getActionText(el).slice(0, 180);
+                    window.__autoAcceptFreeState = state;
                 } catch (e) { }
 
                 clickedCount++;
@@ -313,7 +321,11 @@
                 }
 
                 const promptSig = ((prompt.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase()).slice(0, 260);
-                if (promptSig && state.lastRunPromptSig === promptSig && (now - (state.lastRunShortcutAt || 0)) < 12000) {
+                const lastRunPromptAt = Math.max(
+                    Number(state.lastRunShortcutAt || 0),
+                    Number(state.lastRunPromptApproveAt || 0)
+                );
+                if (promptSig && state.lastRunPromptSig === promptSig && (now - lastRunPromptAt) < 12000) {
                     return false;
                 }
 
@@ -345,7 +357,9 @@
                 }
 
                 state.lastRunShortcutAt = now;
+                state.lastRunPromptApproveAt = now;
                 state.lastRunPromptSig = promptSig;
+                state.terminalCommands = (state.terminalCommands || 0) + 1;
                 window.__autoAcceptFreeState = state;
                 log('Atalho Alt+Enter enviado para executar passo automaticamente');
                 return true;
@@ -355,9 +369,126 @@
         };
 
         const ACTION_NODE_SELECTOR = 'button, [role="button"], a[role="button"]';
+        const PERMISSION_PROMPT_MARKERS = [
+            'opening url in browser',
+            'needs permission to act on',
+            'permission to act on',
+            'requires permission',
+            'permission request',
+            'grant permission',
+            'requesting permission',
+            'access permission',
+            'allow this',
+            'requires your approval',
+            'approval required',
+            'permission to access file',
+            'permission to access files',
+            'access this file',
+            'access these files',
+            'access your files',
+            'file access',
+            'workspace access',
+            'allow file access to',
+            'allow for this conversation'
+        ];
+        const isPermissionBlockAction = (txt) => /\ballowlist\b|\bdeny\b|\breject\b|\bcancel\b|\bconfigure\b|\bsettings?\b/i.test(txt);
+        const isPermissionAllowAction = (txt) => {
+            if (!txt || isPermissionBlockAction(txt)) return false;
+            return /\ballow\b|\bapprove\b|\bgrant\b|^always\b/i.test(txt);
+        };
+        const isPermissionPromptContainer = (containerText, buttons) => {
+            if (!containerText || containerText.includes('allowlist')) return false;
+            const hasMarker = PERMISSION_PROMPT_MARKERS.some(marker => containerText.includes(marker));
+            const hasPermissionWords = /\bpermission\b|\baccess\b|\bapproval\b/i.test(containerText);
+            const hasAllowChoice = (buttons || []).some(btn => isPermissionAllowAction(getActionText(btn)));
+            const hasBlockChoice = (buttons || []).some(btn => /\bdeny\b|\breject\b|\bcancel\b|\bnot\s+now\b|\bblock\b/i.test(getActionText(btn)));
+            const hasConversationAllow = (buttons || []).some(btn => /\ballow(\s+for)?\s+this\s+conversation\b/i.test(getActionText(btn)));
+            return hasMarker || hasConversationAllow || (hasPermissionWords && hasAllowChoice && hasBlockChoice);
+        };
+        const tryApprovePermissionInContainer = (container, sourceTag = '') => {
+            if (!container) return false;
+
+            const containerText = getActionText(container);
+            const buttons = Array.from(container.querySelectorAll(ACTION_NODE_SELECTOR));
+            if (!isPermissionPromptContainer(containerText, buttons)) {
+                return false;
+            }
+
+            const isNegative = (txt) => isPermissionBlockAction(txt);
+
+            const allowForConversation = buttons.find(btn => {
+                const t = getActionText(btn);
+                if (!t || isNegative(t)) return false;
+                return /\ballow(\s+for)?\s+this\s+conversation\b/i.test(t);
+            });
+
+            if (allowForConversation && clickElement(allowForConversation, 'permission')) {
+                log(`Permission approved with "Allow this conversation"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            const allowOnce = buttons.find(btn => {
+                const t = getActionText(btn);
+                return /\ballow\s+once\b/i.test(t);
+            });
+
+            if (allowOnce && clickElement(allowOnce, 'permission')) {
+                log(`Permission approved with "Allow Once"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            const alwaysAllow = buttons.find(btn => {
+                const t = getActionText(btn);
+                if (!t || isNegative(t)) return false;
+                if (/\balways\s+allow\b/i.test(t)) return true;
+                if (/^always\b/i.test(t) && !/\balways\s+run\b/i.test(t)) return true;
+                if (/\balways\s*\.\.\./i.test(t)) return true;
+                return false;
+            });
+
+            if (alwaysAllow && clickElement(alwaysAllow, 'permission')) {
+                log(`Permission approved with "Always Allow"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            const allowButton = buttons.find(btn => {
+                const t = getActionText(btn);
+                return isPermissionAllowAction(t);
+            });
+
+            if (allowButton && clickElement(allowButton, 'permission')) {
+                log(`Permission approved automatically: "${getActionText(allowButton)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            const primaryButton = buttons.find(btn => {
+                const t = getActionText(btn);
+                if (!t || isNegative(t)) return false;
+                const cls = String(btn.className || '').toLowerCase();
+                return cls.includes('primary') || cls.includes('prominent') || cls.includes('cta');
+            });
+
+            if (primaryButton && clickElement(primaryButton, 'permission')) {
+                log(`Permission approved via primary button: "${getActionText(primaryButton)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            const fallbackAllow = getInteractiveNodes(container).find(el => {
+                const t = getActionText(el);
+                if (!t || isNegative(t)) return false;
+                return isPermissionAllowAction(t);
+            });
+
+            if (fallbackAllow && clickElement(fallbackAllow, 'permission')) {
+                log(`Permission approved via fallback: "${getActionText(fallbackAllow)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
+                return true;
+            }
+
+            return false;
+        };
 
         // 1) Priority: permission prompts (Always Allow / Allow Once / Allow)
-        const promptContainers = queryAll('[role="dialog"], .notification-toast, .notification-list-item, .monaco-dialog-box, .monaco-dialog-modal-block, .chat-tool-call, .chat-tool-response, [class*="tool-call"], [data-testid*="tool-call"]');
+        const promptContainers = queryAll('[role="dialog"], .notification-toast, .notification-list-item, .monaco-dialog-box, .monaco-dialog-modal-block, .chat-tool-call, .chat-tool-response, [class*="tool-call"], [data-testid*="tool-call"], .antigravity-agent-side-panel');
         const allActionButtons = [];
         const seenActionButtons = new Set();
         for (const container of promptContainers) {
@@ -373,88 +504,36 @@
         }
 
         for (const container of promptContainers) {
-            const containerText = getActionText(container);
-            const permissionMarkers = [
-                'opening url in browser',
-                'needs permission to act on',
-                'permission to act on',
-                'requires permission',
-                'permission request',
-                'grant permission',
-                'requesting permission',
-                'access permission',
-                'allow this',
-                'requires your approval',
-                'approval required'
-            ];
-            const isPermissionPrompt =
-                permissionMarkers.some(marker => containerText.includes(marker)) &&
-                !containerText.includes('allowlist');
-
-            if (!isPermissionPrompt) continue;
-
-            const buttons = Array.from(container.querySelectorAll(ACTION_NODE_SELECTOR));
-            const isNegative = (txt) => /\bdeny\b|\breject\b|\bcancel\b|\bconfigure\b|\bsettings?\b|\ballowlist\b/i.test(txt);
-
-            const alwaysAllow = buttons.find(btn => {
-                const t = getActionText(btn);
-                if (!t || isNegative(t)) return false;
-                if (/\balways\s+allow\b/i.test(t)) return true;
-                if (/^always\b/i.test(t) && !/\balways\s+run\b/i.test(t)) return true;
-                if (/\balways\s*\.\.\./i.test(t)) return true;
-                return false;
-            });
-
-            if (alwaysAllow && clickElement(alwaysAllow, 'permission')) {
-                log('URL permission approved with "Always Allow"');
+            if (tryApprovePermissionInContainer(container, 'prompt-scope')) {
                 return clickedCount;
             }
+        }
 
-            const allowOnce = buttons.find(btn => {
-                const t = getActionText(btn);
-                return /\ballow\s+once\b/i.test(t);
-            });
+        // 1.01) Global fallback for Antigravity file access prompts rendered outside prompt containers
+        if (allActionButtons.length > 0) {
+            const seenScopes = new Set();
+            for (const btn of allActionButtons) {
+                const btnText = getActionText(btn);
+                if (!btnText) continue;
+                const hasPermissionLabel =
+                    /\ballow\s+once\b/i.test(btnText) ||
+                    /\ballow(\s+for)?\s+this\s+conversation\b/i.test(btnText) ||
+                    /\bdeny\b/i.test(btnText) ||
+                    /\breject\b/i.test(btnText);
+                if (!hasPermissionLabel) continue;
 
-            if (allowOnce && clickElement(allowOnce, 'permission')) {
-                log('URL permission approved with "Allow Once"');
-                return clickedCount;
-            }
-
-            const allowButton = buttons.find(btn => {
-                const t = getActionText(btn);
-                if (!t) return false;
-                const hasAllowAction = /\ballow\b/i.test(t) || /\bapprove\b/i.test(t) || /\bgrant\b/i.test(t) || /^always\b/i.test(t);
-                const hasBlockedWord = /\ballowlist\b|\bdeny\b|\breject\b|\bcancel\b|\bconfigure\b|\bsettings?\b/i.test(t);
-                return hasAllowAction && !hasBlockedWord;
-            });
-
-            if (allowButton && clickElement(allowButton, 'permission')) {
-                log(`Permission approved automatically: "${getActionText(allowButton)}"`);
-                return clickedCount;
-            }
-
-            const primaryButton = buttons.find(btn => {
-                const t = getActionText(btn);
-                if (!t || isNegative(t)) return false;
-                const cls = String(btn.className || '').toLowerCase();
-                return cls.includes('primary') || cls.includes('prominent') || cls.includes('cta');
-            });
-
-            if (primaryButton && clickElement(primaryButton, 'permission')) {
-                log(`Permission approved via primary button: "${getActionText(primaryButton)}"`);
-                return clickedCount;
-            }
-
-            const fallbackAllow = getInteractiveNodes(container).find(el => {
-                const t = getActionText(el);
-                if (!t || isNegative(t)) return false;
-                const hasAllowAction = /\ballow\b/i.test(t) || /\bapprove\b/i.test(t) || /\bgrant\b/i.test(t) || /^always\b/i.test(t);
-                return hasAllowAction;
-            });
-
-            if (fallbackAllow && clickElement(fallbackAllow, 'permission')) {
-                log(`Permission approved via fallback: "${getActionText(fallbackAllow)}"`);
-                return clickedCount;
+                let node = btn;
+                let depth = 0;
+                while (node && depth < 10) {
+                    if (!seenScopes.has(node)) {
+                        seenScopes.add(node);
+                        if (tryApprovePermissionInContainer(node, 'global-fallback')) {
+                            return clickedCount;
+                        }
+                    }
+                    node = node.parentElement;
+                    depth++;
+                }
             }
         }
 
@@ -479,6 +558,36 @@
                 depth++;
             }
             return null;
+        };
+
+        const getRunPromptSignature = (btn, container = null) => {
+            const context = container || findActionContext(btn) || btn?.parentElement || btn;
+            const parts = [];
+            const buttonText = getActionText(btn);
+            if (buttonText) {
+                parts.push(buttonText);
+            }
+            const contextText = String(context?.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (contextText) {
+                parts.push(contextText.slice(0, 260));
+            }
+            return parts.join(' || ').slice(0, 320);
+        };
+
+        const wasRunPromptApprovedRecently = (signature, now = Date.now()) => {
+            if (!signature) return false;
+            const state = window.__autoAcceptFreeState || {};
+            return state.lastRunPromptSig === signature && (now - Number(state.lastRunPromptApproveAt || 0)) < 15000;
+        };
+
+        const recordRunPromptApproval = (signature, label) => {
+            const state = window.__autoAcceptFreeState || {};
+            state.lastRunPromptSig = signature || state.lastRunPromptSig || '';
+            state.lastRunPromptApproveAt = Date.now();
+            state.terminalCommands = (state.terminalCommands || 0) + 1;
+            state.lastAction = 'run-prompt';
+            state.lastActionLabel = String(label || '').slice(0, 180);
+            window.__autoAcceptFreeState = state;
         };
 
         // 1.5) Command execution prompt (example: Reject | Run Alt+Enter)
@@ -525,6 +634,8 @@
 
             const container = findActionContext(btn);
             if (!container) continue;
+            const promptSignature = getRunPromptSignature(btn, container);
+            if (wasRunPromptApprovedRecently(promptSignature, nowForRun)) continue;
 
             const permissionOriginAt = Number(container.getAttribute && container.getAttribute('data-aaf-permission-origin-at') || 0);
             const isFromRecentPermissionOrigin = permissionOriginAt > 0 && (nowForRun - permissionOriginAt) < 8000;
@@ -536,15 +647,7 @@
             const neighbors = Array.from(container.querySelectorAll(ACTION_NODE_SELECTOR));
             const hasReject = neighbors.some(el => /\breject\b/i.test(getActionText(el)));
             const hasAlwaysRun = neighbors.some(el => /\balways\s+run\b/i.test(getActionText(el)));
-            const hasPermissionPending = (
-                ['opening url in browser', 'needs permission to act on', 'permission to act on', 'requires permission', 'permission request', 'allow this', 'approval required'].some(marker => containerText.includes(marker)) &&
-                neighbors.some(el => {
-                    const t = getActionText(el);
-                    if (!t) return false;
-                    if (/\bdeny\b|\breject\b|\bcancel\b|\bconfigure\b|\bsettings?\b|\ballowlist\b/i.test(t)) return false;
-                    return /\ballow\b|\bapprove\b|\bgrant\b|^always\b/i.test(t);
-                })
-            );
+            const hasPermissionPending = isPermissionPromptContainer(containerText, neighbors);
             if (hasPermissionPending) {
                 continue;
             }
@@ -576,7 +679,7 @@
             } catch (e) { }
 
             if (score > 0) {
-                runCandidates.push({ btn, text, score });
+                runCandidates.push({ btn, text, score, signature: promptSignature });
             }
         }
 
@@ -584,6 +687,7 @@
             runCandidates.sort((a, b) => b.score - a.score);
             const best = runCandidates[0];
             if (clickElement(best.btn, 'run-prompt')) {
+                recordRunPromptApproval(best.signature, best.text);
                 log(`Execution approved automatically: "${best.text}" (score=${best.score})`);
                 return clickedCount;
             }
@@ -602,19 +706,15 @@
                     const scope = findActionContext(el) || container || el.parentElement;
                     const containerText = getActionText(scope || el);
                     const hasPermissionPending = (
-                        ['opening url in browser', 'needs permission to act on', 'permission to act on', 'requires permission', 'permission request', 'allow this', 'approval required'].some(marker => containerText.includes(marker)) &&
-                        !!(scope && getInteractiveNodes(scope).some(n => {
-                            const nt = getActionText(n);
-                            if (!nt) return false;
-                            if (/\bdeny\b|\breject\b|\bcancel\b|\bconfigure\b|\bsettings?\b|\ballowlist\b/i.test(nt)) return false;
-                            return /\ballow\b|\bapprove\b|\bgrant\b|^always\b/i.test(nt);
-                        }))
+                        !!(scope && isPermissionPromptContainer(containerText, getInteractiveNodes(scope)))
                     );
                     if (hasPermissionPending) return false;
                     return ['step requires input', 'ask every time', 'requires input', 'reject', 'run alt', 'runalt', 'run command', 'command?'].some(marker => containerText.includes(marker));
                 });
 
-                if (runFallback && clickElement(runFallback, 'run-prompt')) {
+                const fallbackSignature = runFallback ? getRunPromptSignature(runFallback, container) : '';
+                if (runFallback && !wasRunPromptApprovedRecently(fallbackSignature) && clickElement(runFallback, 'run-prompt')) {
+                    recordRunPromptApproval(fallbackSignature, getActionText(runFallback));
                     log(`Execution approved via fallback: "${getActionText(runFallback)}"`);
                     return clickedCount;
                 }
@@ -672,6 +772,8 @@
 
                 const context = findActionContext(btn) || findRunPromptContext(btn);
                 if (!context) continue;
+                const promptSignature = getRunPromptSignature(btn, context);
+                if (wasRunPromptApprovedRecently(promptSignature)) continue;
 
                 const contextText = getActionText(context);
                 const neighbors = Array.from(context.querySelectorAll(ACTION_NODE_SELECTOR));
@@ -696,13 +798,14 @@
                 if (hasStepMarker) score += 4;
                 if (/\brun\s*alt/i.test(text) || /runalt/i.test(text)) score += 2;
                 if (isRunActionText(text)) score += 1;
-                strictRunCandidates.push({ btn, text, score });
+                strictRunCandidates.push({ btn, text, score, signature: promptSignature });
             }
 
             if (strictRunCandidates.length > 0) {
                 strictRunCandidates.sort((a, b) => b.score - a.score);
                 const bestStrictRun = strictRunCandidates[0];
                 if (clickElement(bestStrictRun.btn, 'run-prompt')) {
+                    recordRunPromptApproval(bestStrictRun.signature, bestStrictRun.text);
                     log(`Execution approved via strict global fallback: "${bestStrictRun.text}" (score=${bestStrictRun.score})`);
                     return clickedCount;
                 }
@@ -1094,10 +1197,16 @@
             sessionID: 0,
             clicks: 0,
             lastRunShortcutAt: 0,
+            lastRunPromptSig: '',
+            lastRunPromptApproveAt: 0,
             lastExpandClickAt: 0,
             lastPermissionClickAt: 0,
             lastPermissionX: 0,
             lastPermissionY: 0,
+            permissionApprovals: 0,
+            terminalCommands: 0,
+            lastAction: '',
+            lastActionLabel: '',
             lastObserverScanAt: 0,
             clickInterval: null,
             domObserver: null,
@@ -1111,7 +1220,11 @@
     window.__autoAcceptGetStats = function() {
         return { 
             clicks: window.__autoAcceptFreeState.clicks || 0,
-            tabCount: window.__autoAcceptFreeState.tabNames?.length || 0
+            tabCount: window.__autoAcceptFreeState.tabNames?.length || 0,
+            permissions: window.__autoAcceptFreeState.permissionApprovals || 0,
+            terminalCommands: window.__autoAcceptFreeState.terminalCommands || 0,
+            lastAction: window.__autoAcceptFreeState.lastAction || '',
+            lastActionLabel: window.__autoAcceptFreeState.lastActionLabel || ''
         };
     };
 
@@ -1131,10 +1244,16 @@
         state.bannedCommands = config.bannedCommands || [];
         state.tabNames = [];
         state.lastRunShortcutAt = 0;
+        state.lastRunPromptSig = '';
+        state.lastRunPromptApproveAt = 0;
         state.lastExpandClickAt = 0;
         state.lastPermissionClickAt = 0;
         state.lastPermissionX = 0;
         state.lastPermissionY = 0;
+        state.permissionApprovals = 0;
+        state.terminalCommands = 0;
+        state.lastAction = '';
+        state.lastActionLabel = '';
 
         log(`Starting ${state.mode} mode for ${state.ide}...`);
 

@@ -15,14 +15,14 @@ Antigravity Auto Accept removes repetitive approval clicks in Antigravity and gi
 
 Current version:
 
-- `1.0.9`
+- `1.1.0`
 
 Download:
 
 - GitHub release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.9
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.1.0
 - VSIX:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.9/antigravity-auto-accept-1.0.9.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.1.0/antigravity-auto-accept-1.1.0.vsix
 
 ## Open The Control Panel First
 

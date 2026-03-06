@@ -4782,6 +4782,20 @@ function escapePowerShellSingleQuoted(input) {
 function quoteShArg(arg) {
   return `'${String(arg ?? "").replace(/'/g, "'\\''")}'`;
 }
+function quoteCmdArg(arg) {
+  const text = String(arg ?? "");
+  if (text.length === 0) {
+    return '""';
+  }
+  if (/[\s"&()^<>|]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+function buildWindowsArgumentString(args = []) {
+  const normalizedArgs = Array.isArray(args) ? args.map((arg) => String(arg ?? "")).filter((arg) => arg.trim().length > 0) : [];
+  return normalizedArgs.map(quoteCmdArg).join(" ");
+}
 function formatSpawnSyncError(result, fallbackMessage) {
   if (!result)
     return fallbackMessage;
@@ -4792,6 +4806,111 @@ function formatSpawnSyncError(result, fallbackMessage) {
   const stdout = result.stdout ? result.stdout.toString().trim() : "";
   const detail = stderr || stdout;
   return detail ? `${fallbackMessage}: ${detail}` : fallbackMessage;
+}
+function getWindowsCommandLineByPid(pid) {
+  const pidValue = Number(pid);
+  if (!Number.isFinite(pidValue) || pidValue <= 0) {
+    return "";
+  }
+  const psScript = [
+    `$proc = Get-CimInstance Win32_Process -Filter "ProcessId=${Math.trunc(pidValue)}" |`,
+    " Select-Object -ExpandProperty CommandLine;",
+    "if ($proc) { Write-Output $proc }"
+  ].join("");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0) {
+    return "";
+  }
+  return result.stdout ? result.stdout.toString().trim() : "";
+}
+function getWindowsMainProcessCommandLine(exeInfo) {
+  if (process.platform !== "win32" || !exeInfo?.processName) {
+    return "";
+  }
+  const hintedPid = Number(process.env.VSCODE_PID || 0);
+  const byPid = getWindowsCommandLineByPid(hintedPid);
+  if (byPid && byPid.includes(".exe")) {
+    return byPid;
+  }
+  const procName = escapePowerShellSingleQuoted(exeInfo.processName);
+  const psScript = [
+    `$proc = Get-CimInstance Win32_Process -Filter "Name='${procName}'" |`,
+    " Where-Object {",
+    "   $_.CommandLine -and",
+    "   $_.CommandLine -notmatch '--type=' -and",
+    "   $_.CommandLine -notmatch '--node-ipc' -and",
+    "   $_.CommandLine -notmatch 'resources\\\\app\\\\extensions\\\\'",
+    " } |",
+    " Sort-Object CreationDate -Descending |",
+    " Select-Object -First 1 -ExpandProperty CommandLine;",
+    "if ($proc) { Write-Output $proc }"
+  ].join("");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0) {
+    return "";
+  }
+  return result.stdout ? result.stdout.toString().trim() : "";
+}
+function extractCliOptionValue(commandLine, optionName) {
+  if (!commandLine || !optionName) {
+    return "";
+  }
+  const escaped = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const eqPattern = new RegExp(`${escaped}=("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
+  const spacedPattern = new RegExp(`${escaped}\\s+("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
+  const eqMatch = commandLine.match(eqPattern);
+  if (eqMatch) {
+    return eqMatch[2] || eqMatch[3] || eqMatch[4] || "";
+  }
+  const spacedMatch = commandLine.match(spacedPattern);
+  if (spacedMatch) {
+    return spacedMatch[2] || spacedMatch[3] || spacedMatch[4] || "";
+  }
+  return "";
+}
+function hasCliFlag(commandLine, optionName) {
+  if (!commandLine || !optionName) {
+    return false;
+  }
+  const escaped = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const flagPattern = new RegExp(`(?:^|\\s)${escaped}(?=\\s|$)`, "i");
+  return flagPattern.test(commandLine);
+}
+function getWindowsRelaunchArgs(exeInfo) {
+  const commandLine = getWindowsMainProcessCommandLine(exeInfo);
+  if (!commandLine) {
+    return [];
+  }
+  const args = [];
+  const valueOptions = [
+    "--user-data-dir",
+    "--extensions-dir",
+    "--profile",
+    "--folder-uri",
+    "--file-uri",
+    "--remote",
+    "--workspace"
+  ];
+  const flagOptions = [
+    "--new-window",
+    "--reuse-window"
+  ];
+  for (const optionName of valueOptions) {
+    const optionValue = extractCliOptionValue(commandLine, optionName);
+    if (optionValue) {
+      args.push(optionName, optionValue);
+    }
+  }
+  for (const flagName of flagOptions) {
+    if (hasCliFlag(commandLine, flagName)) {
+      args.push(flagName);
+    }
+  }
+  return args;
 }
 function resolveExistingWindowsExecutable(exeInfo) {
   if (!exeInfo)
@@ -4999,18 +5118,20 @@ function findExistingWindowsShortcutTemplate(exeInfo, port = cdpPort) {
   }
   return null;
 }
-function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
+function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort, relaunchArgs = []) {
   const expectedPort = normalizeCdpPort(port, cdpPort);
   const template = findExistingWindowsShortcutTemplate(exeInfo, expectedPort);
   const configured = validateConfiguredExecutablePath(exeInfo);
-  const canReuseTemplate = !!(template?.path && path.resolve(template.path) !== path.resolve(shortcutPath) && (!configured.hasOverride || configured.valid && template?.details?.TargetPath && path.resolve(template.details.TargetPath) === path.resolve(configured.path)));
+  const extraArgs = Array.isArray(relaunchArgs) ? relaunchArgs.map((arg) => String(arg ?? "")).filter((arg) => arg.trim().length > 0) : [];
+  const argumentString = buildWindowsArgumentString([`--remote-debugging-port=${expectedPort}`, ...extraArgs]);
+  const canReuseTemplate = !!(template?.path && extraArgs.length === 0 && path.resolve(template.path) !== path.resolve(shortcutPath) && (!configured.hasOverride || configured.valid && template?.details?.TargetPath && path.resolve(template.details.TargetPath) === path.resolve(configured.path)));
   if (canReuseTemplate) {
     fs.copyFileSync(template.path, shortcutPath);
     if (fs.existsSync(shortcutPath)) {
       return {
         path: shortcutPath,
         targetPath: template.details?.TargetPath || "",
-        arguments: template.details?.Arguments || `--remote-debugging-port=${expectedPort}`,
+        arguments: template.details?.Arguments || argumentString,
         copiedFrom: template.path
       };
     }
@@ -5031,7 +5152,7 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
   const iconLocation = template?.details?.IconLocation || `${resolvedExePath},0`;
   const workDirEsc = escapePowerShellSingleQuoted(workingDirectory);
   const iconEsc = escapePowerShellSingleQuoted(iconLocation);
-  const argsEsc = escapePowerShellSingleQuoted(`--remote-debugging-port=${expectedPort}`);
+  const argsEsc = escapePowerShellSingleQuoted(argumentString);
   const psScript = [
     "$WScriptShell = New-Object -ComObject WScript.Shell",
     `$Shortcut = $WScriptShell.CreateShortcut('${shortcutEsc}')`,
@@ -5053,7 +5174,7 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
   return {
     path: shortcutPath,
     targetPath: resolvedExePath,
-    arguments: `--remote-debugging-port=${expectedPort}`
+    arguments: argumentString
   };
 }
 async function chooseExecutablePathForCurrentIDE() {
@@ -5156,7 +5277,8 @@ async function saveLauncherForPort(port = cdpPort) {
   const targetPath = saveUri.fsPath;
   try {
     if (process.platform === "win32") {
-      createWindowsLauncherShortcut(targetPath, exeInfo, expectedPort);
+      const relaunchArgs = getWindowsRelaunchArgs(exeInfo);
+      createWindowsLauncherShortcut(targetPath, exeInfo, expectedPort, relaunchArgs);
     } else {
       const launcherScript = buildPortableLauncherScript(exeInfo, expectedPort);
       if (!launcherScript) {
@@ -5298,9 +5420,19 @@ function getControlPanelHtml() {
   <script>
     const vscode = acquireVsCodeApi();
     const byId = (id) => document.getElementById(id);
+    let renderedPortValue = '';
+    let portInputDirty = false;
 
     function post(type, payload = {}) {
       vscode.postMessage({ type, ...payload });
+    }
+
+    function parsePortInputValue() {
+      return Number(String(byId('portInput').value || '').trim());
+    }
+
+    function refreshPortDraftState() {
+      portInputDirty = String(byId('portInput').value || '') !== renderedPortValue;
     }
 
     function setStatus(text, kind) {
@@ -5323,14 +5455,20 @@ function getControlPanelHtml() {
       byId('savedLauncherPath').textContent = state.savedLauncherPath || '-';
       byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
-      byId('portInput').value = String(state.cdpPort || '');
+      renderedPortValue = String(state.cdpPort || '');
+      if (!portInputDirty) {
+        byId('portInput').value = renderedPortValue;
+      }
       byId('pauseOnMismatch').checked = !!state.pauseOnCdpMismatch;
       byId('executablePath').textContent = state.executablePath || '-';
       byId('executablePathMeta').textContent = (state.executablePathSource ? ('Source: ' + state.executablePathSource + ' | ') : '') + (state.executablePathMessage || '-');
       byId('clearExecutable').disabled = !state.hasExecutableOverride;
 
       const s = state.cdpStatus || {};
-      byId('saveLauncher').disabled = !!(state.hasExecutableOverride && !state.executablePathValid);
+      const draftPort = parsePortInputValue();
+      const invalidDraftPort = !Number.isInteger(draftPort) || draftPort < 1 || draftPort > 65535;
+      byId('savePort').disabled = invalidDraftPort;
+      byId('saveLauncher').disabled = invalidDraftPort || !!(state.hasExecutableOverride && !state.executablePathValid);
       if (s.state === 'ok') setStatus(s.message || 'CDP is ready.', 'ok');
       else if (s.state === 'connecting') setStatus(s.message || 'CDP is starting.', 'warnc');
       else if (s.state === 'mcp_only') setStatus(s.message || 'MCP mode detected; fixed CDP launcher is not available.', 'warnc');
@@ -5346,8 +5484,15 @@ function getControlPanelHtml() {
     });
 
     byId('refresh').addEventListener('click', () => post('refresh'));
-    byId('savePort').addEventListener('click', () => post('savePort', { port: Number(byId('portInput').value) }));
-    byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: Number(byId('portInput').value) }));
+    byId('portInput').addEventListener('input', () => refreshPortDraftState());
+    byId('portInput').addEventListener('blur', () => refreshPortDraftState());
+    byId('savePort').addEventListener('click', () => {
+      const port = parsePortInputValue();
+      renderedPortValue = String(port);
+      portInputDirty = false;
+      post('savePort', { port });
+    });
+    byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: parsePortInputValue() }));
     byId('chooseExecutable').addEventListener('click', () => post('chooseExecutable'));
     byId('clearExecutable').addEventListener('click', () => post('clearExecutable'));
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));

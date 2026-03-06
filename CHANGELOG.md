@@ -2,6 +2,16 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.0] - 2026-03-06
+
+### Fixed
+- The control panel no longer overwrites an unsaved custom CDP port while it refreshes.
+- Windows saved launchers now preserve the current Antigravity relaunch context instead of dropping workspace/profile arguments.
+- Run-prompt approvals now use prompt-signature dedupe so the same command prompt is not re-approved repeatedly after rerenders.
+
+### Changed
+- Added terminal approval stats/state tracking so repeated run approvals are easier to diagnose from runtime logs.
+
 ## [1.0.9] - 2026-03-06
 
 ### Added
