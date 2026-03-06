@@ -20,5 +20,3 @@
 4. If prompted for setup, click `Set Up Now`.
 
 Detailed install/fallback guide: `INSTALL.md`.
-
-

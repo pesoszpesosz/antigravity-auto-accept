@@ -1,136 +1,123 @@
-# Antigravity Auto Accept - Complete User Manual (v1.0.6)
+# Antigravity Auto Accept - User Manual
 
-## 1) What this extension does
+## 1) What This Extension Does
 
-- Auto-accepts Antigravity agent approval prompts.
-- Supports setup with CDP on port `9000` for stronger prompt interaction.
-- Adds one-click setup command: `Antigravity Auto Accept: Setup CDP`.
+- Auto-accepts repetitive Antigravity approval prompts.
+- Exposes a control panel for CDP state and launcher setup.
+- Lets users choose the CDP port they want to work with.
+- Saves a launcher file anywhere on the machine.
+- Supports Background Mode when CDP is connected.
 
-## 2) Quick install (recommended)
+## 2) Recommended Workflow
 
-1. Download the release VSIX:
-   `antigravity-auto-accept-1.0.6.vsix`
-2. Open Antigravity.
-3. Run `Extensions: Install from VSIX...`.
-4. Select the VSIX.
-5. Reload Antigravity if prompted.
+1. Install the extension.
+2. Open `Antigravity Auto Accept: Open Control Panel`.
+3. Set the CDP port you want.
+4. Click `Save IDE Launcher...`.
+5. Save the launcher file where you want it.
+6. Open Antigravity through that saved launcher.
+7. Turn on `Auto Accept`.
 
-## 3) First launch behavior
+## 3) What The Control Panel Shows
 
-If CDP is not active on `127.0.0.1:9000`, the extension shows a setup prompt.
+- IDE
+- platform
+- remote context
+- extension host
+- expected CDP port
+- active CDP ports
+- CDP connections
+- saved launcher path
+- exact manual open steps
+- manual fallback command
 
-Choose:
+## 4) Launcher Behavior
 
-- `Set Up Now` to auto-create desktop launchers and restart.
+The launcher is platform-specific:
 
-Setup creates:
+- Windows: `.lnk`
+- macOS: `.command`
+- Linux: `.sh`
 
-- `Start Antigravity (CDP 9000).cmd`
-- `Start Antigravity (CDP 9000).lnk`
+The important rule is simple:
 
-## 4) If auto-setup does not reopen correctly
+- if you want the selected CDP port, open Antigravity through the saved launcher
 
-1. Close all Antigravity windows.
-2. Start from desktop shortcut: `Start Antigravity (CDP 9000).lnk`.
-3. Run command `Antigravity Auto Accept: Setup CDP`.
-4. Restart once more.
+## 5) Auto Accept And Background Mode
 
-Notes:
+### Auto Accept
 
-- Some machines require `2-3` restarts on first setup.
-- This is expected when process/profile state is stale.
+Use:
 
-## 5) Symptom-based troubleshooting
+- `Toggle Auto Accept` in the control panel
+- or `Antigravity Auto Accept: Toggle ON/OFF`
 
-### A) Prompt hangs at `Run` and is not auto-clicked
+### Background Mode
 
-1. Ensure extension status shows `Auto Accept: ON`.
-2. Ensure CDP is reachable:
-   `Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9000/json/version`
-3. If not `200`, relaunch with desktop shortcut and test again.
+Background Mode is available when CDP is active and connected.
 
-### B) Background mode says CDP required
+Use:
 
-Run:
+- `Toggle Background Mode` in the control panel
+- or `Antigravity Auto Accept: Toggle Background Mode`
 
-- `Antigravity Auto Accept: Setup CDP`
+## 6) Manual Fallback Commands
 
-Then restart Antigravity.
-
-### C) Setup prompt never appears
-
-1. Confirm you are in Antigravity (not another editor profile).
-2. Open command palette and run `Antigravity Auto Accept: Setup CDP`.
-3. Restart Antigravity and retest.
-
-### D) Random IDE clicking behavior
-
-1. Disable extension.
-2. Reload window.
-3. Re-enable extension.
-4. Keep only this extension active for testing if needed.
-
-### E) Extension installed but not active
-
-1. Reload window.
-2. Disable/enable extension.
-3. Check for conflicting auto-accept extensions and remove them.
-
-## 6) Manual fallback commands
-
-### Windows PowerShell
+### Windows
 
 ```powershell
-$exe = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe"
-Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
-Stop-Process -Name Antigravity -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+$exeCandidates = @(
+  "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe",
+  "$env:ProgramFiles\Antigravity\Antigravity.exe",
+  "$env:ProgramFiles(x86)\Antigravity\Antigravity.exe"
+)
+$exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $exe) { Write-Host 'Antigravity executable not found'; exit 1 }
 Start-Process $exe -ArgumentList '--remote-debugging-port=9000'
 ```
 
 ### macOS
 
 ```bash
-pkill Antigravity 2>/dev/null
-sleep 2
 open -n -a Antigravity --args --remote-debugging-port=9000
 ```
 
 ### Linux
 
 ```bash
-pkill antigravity 2>/dev/null
-sleep 2
-antigravity --remote-debugging-port=9000 &
+antigravity --remote-debugging-port=9000 >/dev/null 2>&1 &
 ```
 
-## 7) Verification checklist
+## 7) Troubleshooting
 
-1. Extension installed and enabled.
-2. Status bar shows `Auto Accept: ON`.
-3. CDP endpoint returns HTTP `200`.
-4. Test prompt appears and is auto-handled.
+### Auto Accept is ON, but behavior is not correct
 
-## 8) Open VSX upload (maintainer)
+Check the control panel:
 
-Use this exact VSIX file:
+- expected CDP port
+- active CDP ports
+- CDP connections
 
-- `release/antigravity-auto-accept-1.0.6.vsix`
+If the selected port is not active, reopen the IDE through the saved launcher.
 
-Command:
+### Background Mode is not available
 
-```bash
-npx ovsx publish release/antigravity-auto-accept-1.0.6.vsix -p <OVSX_PAT>
-```
+That usually means CDP is not active or not connected yet. Start the IDE through the saved launcher, then refresh the panel.
 
-## 9) Official links
+### I saved the launcher, but I do not know how to use it
 
-- Release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.6
-- VSIX download:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix
-- SHA256:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix.sha256
+The panel already prints:
+
+- saved launcher path
+- exact open steps
+
+Follow those steps exactly.
+
+## 8) Open VSX
+
+Extension page:
+
+https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
 
 
 

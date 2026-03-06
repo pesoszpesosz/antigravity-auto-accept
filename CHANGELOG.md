@@ -2,12 +2,30 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.0.7] - 2026-03-06
+
+### Changed
+- Added the control panel screenshot and refreshed the GitHub/Open VSX-facing docs.
+- Centered the user flow on the control panel, configurable CDP port, and save-anywhere launcher flow.
+- Updated install, manual, release, and publishing docs for the `1.0.7` release.
+
+### Fixed
+- Validated the current Windows launcher path against the working Antigravity shortcut format.
+- Improved Windows CDP runtime status handling by accepting Antigravity's live DevTools marker when it matches the selected port.
+
 ## [1.0.6] - 2026-03-03
 
 ### Changed
 - Bumped extension version to `1.0.6` for marketplace/Open VSX republish.
-- Updated current release/install links and docs from `1.0.5` to `1.0.6`.
-- Reworked marketplace README to be post-install and user-first.
+- Added a control panel for CDP state, launcher management, and runtime controls.
+- Replaced launcher/setup noise with a save-anywhere launcher workflow.
+- Added configurable CDP port handling.
+- Updated README, install guide, and user manual to reflect the current workflow.
+
+### Fixed
+- Removed repeated setup-loop behavior in the user-facing flow.
+- Fixed Windows launcher generation to follow the working shortcut format.
+- Improved runtime status reporting for expected ports, active ports, and connections.
 
 ## [1.0.5] - 2026-03-03
 

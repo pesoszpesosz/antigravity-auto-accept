@@ -1,86 +1,101 @@
-# Antigravity Auto Accept - User Install Guide (v1.0.6)
+# Antigravity Auto Accept - Install Guide
 
-## 1) Download
+## 1) Install
 
 Choose one:
 
-- Release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.6
-- Release asset (recommended):
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix
-- GitHub file page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.0.6.vsix
-- Direct VSIX download:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix
+- Open VSX:
+  https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
+- GitHub Releases:
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases
 
-Optional integrity check:
-
-- SHA256 release asset:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.6/antigravity-auto-accept-1.0.6.vsix.sha256
-- SHA256 file:
-  https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.0.6.vsix.sha256
-
-## 2) Install VSIX In Antigravity
+If you are installing from a VSIX:
 
 1. Open Antigravity.
 2. Press `Ctrl+Shift+P`.
 3. Run `Extensions: Install from VSIX...`.
-4. Select `antigravity-auto-accept-1.0.6.vsix`.
-5. Click `Reload` if prompted.
+4. Select the downloaded `.vsix`.
+5. Reload the window if prompted.
 
-## 3) First-Run Setup Prompt
+## 2) Open The Control Panel
 
-If CDP on port `9000` is not active, extension shows a setup popup.
+Use one of these:
 
-Click:
+- click the bottom-right status item `Auto Accept Panel`
+- run `Antigravity Auto Accept: Open Control Panel`
 
-- `Set Up Now`
+## 3) Configure CDP
 
-This creates:
+1. Choose the CDP port you want.
+2. Click `Save Port`.
+3. Click `Save IDE Launcher...`.
+4. Save the launcher anywhere you want.
 
-- Desktop launcher script: `Start Antigravity (CDP 9000).cmd`
-- Desktop shortcut: `Start Antigravity (CDP 9000).lnk`
+Generated launcher type:
 
-Then Antigravity is restarted with:
+- Windows: `.lnk`
+- macOS: `.command`
+- Linux: `.sh`
 
-- `--remote-debugging-port=9000`
+## 4) Start Antigravity Correctly
 
-## 4) If Auto Setup Does Not Work Immediately
+Open Antigravity through the launcher file you saved.
 
-Do this:
+The panel also shows:
 
-1. Close all Antigravity windows.
-2. Double-click desktop shortcut `Start Antigravity (CDP 9000).lnk`.
-3. If still needed, run command `Antigravity Auto Accept: Setup CDP`.
-4. Restart Antigravity once more.
+- the saved launcher path
+- exact step-by-step open instructions
+- a manual fallback command
 
-Important:
+## 5) Turn It On
 
-- In some environments, initial setup may require `2-3` restarts.
+Use either:
 
-## 5) Manual Fallback (Windows PowerShell)
+- `Toggle Auto Accept` inside the control panel
+- `Antigravity Auto Accept: Toggle ON/OFF`
+
+If CDP is connected, you can also enable Background Mode.
+
+## 6) Manual Fallback
+
+### Windows
 
 ```powershell
-$exe = "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe"
-Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue
-Stop-Process -Name Antigravity -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 1
+$exeCandidates = @(
+  "$env:LOCALAPPDATA\Programs\Antigravity\Antigravity.exe",
+  "$env:ProgramFiles\Antigravity\Antigravity.exe",
+  "$env:ProgramFiles(x86)\Antigravity\Antigravity.exe"
+)
+$exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $exe) { Write-Host 'Antigravity executable not found'; exit 1 }
 Start-Process $exe -ArgumentList '--remote-debugging-port=9000'
 ```
 
-## 6) Verify Setup
+### macOS
 
-Run:
+```bash
+open -n -a Antigravity --args --remote-debugging-port=9000
+```
+
+### Linux
+
+```bash
+antigravity --remote-debugging-port=9000 >/dev/null 2>&1 &
+```
+
+## 7) Verification
+
+Control panel success signals:
+
+- expected CDP port matches the port you chose
+- active CDP ports includes that port
+- CDP connections is greater than `0`
+
+If you need a direct check:
 
 ```powershell
 Invoke-WebRequest -UseBasicParsing http://127.0.0.1:9000/json/version
 ```
-
-Expected:
-
-- HTTP `200`
-
-If status is not `200`, restart using the desktop shortcut again.
 
 
 

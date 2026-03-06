@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity Auto Accept",
   "description": "Automatically accepts Antigravity agent approval prompts with optional CDP-assisted setup.",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "publisher": "pesosz",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -35,6 +35,9 @@
   "engines": {
     "vscode": "^1.75.0"
   },
+  "extensionKind": [
+    "ui"
+  ],
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -51,12 +54,28 @@
       },
       {
         "command": "auto-accept-free.setupCDP",
-        "title": "Antigravity Auto Accept: Setup CDP"
+        "title": "Antigravity Auto Accept: Save IDE Launcher"
+      },
+      {
+        "command": "auto-accept-free.openControlPanel",
+        "title": "Antigravity Auto Accept: Open Control Panel"
       }
     ],
     "configuration": {
       "title": "Antigravity Auto Accept",
       "properties": {
+        "autoAcceptFree.cdpPort": {
+          "type": "number",
+          "default": 9000,
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "CDP port expected by Auto Accept and used when generating launcher files"
+        },
+        "autoAcceptFree.pauseOnCdpMismatch": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show a warning and pause action flow when configured CDP port is not active"
+        },
         "autoAcceptFree.pollInterval": {
           "type": "number",
           "default": 500,

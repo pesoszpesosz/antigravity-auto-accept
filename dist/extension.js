@@ -2252,7 +2252,7 @@ var require_websocket = __commonJS({
     var tls = require("tls");
     var { randomBytes, createHash } = require("crypto");
     var { Duplex, Readable } = require("stream");
-    var { URL } = require("url");
+    var { URL: URL2 } = require("url");
     var PerMessageDeflate = require_permessage_deflate();
     var Receiver = require_receiver();
     var Sender = require_sender();
@@ -2762,11 +2762,11 @@ var require_websocket = __commonJS({
         );
       }
       let parsedUrl;
-      if (address instanceof URL) {
+      if (address instanceof URL2) {
         parsedUrl = address;
       } else {
         try {
-          parsedUrl = new URL(address);
+          parsedUrl = new URL2(address);
         } catch (e) {
           throw new SyntaxError(`Invalid URL: ${address}`);
         }
@@ -2905,7 +2905,7 @@ var require_websocket = __commonJS({
           req.abort();
           let addr;
           try {
-            addr = new URL(location, address);
+            addr = new URL2(location, address);
           } catch (e) {
             const err = new SyntaxError(`Invalid URL: ${location}`);
             emitErrorAndClose(websocket, err);
@@ -3734,8 +3734,26 @@ var require_cdp_handler = __commonJS({
     var http2 = require("http");
     var fs2 = require("fs");
     var path2 = require("path");
-    var BASE_PORT = 9e3;
-    var PORT_RANGE = 3;
+    var DEFAULT_BASE_PORT = 9e3;
+    var DEFAULT_PORT_RANGE = 3;
+    function normalizePort(value, fallback = DEFAULT_BASE_PORT) {
+      const num = Number(value);
+      if (!Number.isFinite(num))
+        return fallback;
+      const port = Math.trunc(num);
+      if (port < 1 || port > 65535)
+        return fallback;
+      return port;
+    }
+    function normalizePortRange(value, fallback = DEFAULT_PORT_RANGE) {
+      const num = Number(value);
+      if (!Number.isFinite(num))
+        return fallback;
+      const range = Math.trunc(num);
+      if (range < 0 || range > 32)
+        return fallback;
+      return range;
+    }
     var _autoAcceptScript = null;
     function getAutoAcceptScript() {
       if (_autoAcceptScript)
@@ -3760,14 +3778,42 @@ var require_cdp_handler = __commonJS({
         this.isEnabled = false;
         this.msgId = 1;
         this._lastConfigHash = "";
+        this.basePort = DEFAULT_BASE_PORT;
+        this.portRange = DEFAULT_PORT_RANGE;
       }
       log(msg) {
         this.logger(`[CDP] ${msg}`);
       }
-      async isCDPAvailable() {
-        for (let port = BASE_PORT - PORT_RANGE; port <= BASE_PORT + PORT_RANGE; port++) {
+      getPortCandidates(basePort = this.basePort, portRange = this.portRange) {
+        const base = normalizePort(basePort, DEFAULT_BASE_PORT);
+        const range = normalizePortRange(portRange, DEFAULT_PORT_RANGE);
+        const ports = [];
+        for (let port = base - range; port <= base + range; port++) {
+          if (port >= 1 && port <= 65535) {
+            ports.push(port);
+          }
+        }
+        return ports;
+      }
+      async getAvailablePorts(portCandidates = null) {
+        const candidates = Array.isArray(portCandidates) && portCandidates.length > 0 ? [...new Set(portCandidates.map((p) => normalizePort(p, 0)).filter((p) => p > 0))] : this.getPortCandidates();
+        const available = [];
+        for (const port of candidates) {
           try {
             const pages = await this._getPages(port);
+            if (pages.length > 0) {
+              available.push(port);
+            }
+          } catch (e) {
+          }
+        }
+        return available;
+      }
+      async isCDPAvailable(port = this.basePort, portRange = this.portRange) {
+        const candidates = this.getPortCandidates(port, portRange);
+        for (const port2 of candidates) {
+          try {
+            const pages = await this._getPages(port2);
             if (pages.length > 0)
               return true;
           } catch (e) {
@@ -3777,18 +3823,34 @@ var require_cdp_handler = __commonJS({
       }
       async start(config) {
         this.isEnabled = true;
+        this.basePort = normalizePort(config?.cdpPort, this.basePort);
+        this.portRange = normalizePortRange(config?.cdpPortRange, this.portRange);
+        const candidates = this.getPortCandidates(this.basePort, this.portRange);
+        const candidateSet = new Set(candidates);
+        for (const [id, conn] of Array.from(this.connections.entries())) {
+          const port = Number(String(id).split(":")[0]);
+          if (!candidateSet.has(port)) {
+            try {
+              conn.ws.close();
+            } catch (e) {
+            }
+            this.connections.delete(id);
+          }
+        }
         const quiet = !!config?.quiet;
         const configHash = JSON.stringify({
           b: !!config?.isBackgroundMode,
           i: String(config?.ide || ""),
-          bc: Array.isArray(config?.bannedCommands) ? config.bannedCommands.length : 0
+          bc: Array.isArray(config?.bannedCommands) ? config.bannedCommands.length : 0,
+          p: this.basePort,
+          r: this.portRange
         });
         if (!quiet || this._lastConfigHash !== configHash) {
-          this.log(`Scanning ports ${BASE_PORT - PORT_RANGE} to ${BASE_PORT + PORT_RANGE}...`);
+          this.log(`Scanning ports ${candidates[0]} to ${candidates[candidates.length - 1]}...`);
           this.log(`Config: background=${config.isBackgroundMode}, ide=${config.ide}`);
         }
         this._lastConfigHash = configHash;
-        for (let port = BASE_PORT - PORT_RANGE; port <= BASE_PORT + PORT_RANGE; port++) {
+        for (const port of candidates) {
           try {
             const pages = await this._getPages(port);
             if (pages.length > 0) {
@@ -3996,16 +4058,21 @@ var require_cdp_handler = __commonJS({
         return this.connections.size;
       }
       async getStats() {
-        const stats = { clicks: 0, blocked: 0, fileEdits: 0, terminalCommands: 0 };
+        const stats = { clicks: 0, permissions: 0, blocked: 0, fileEdits: 0, terminalCommands: 0, lastAction: "", lastActionLabel: "" };
         for (const [id] of this.connections) {
           try {
             const res = await this._evaluate(id, "JSON.stringify(window.__autoAcceptGetStats ? window.__autoAcceptGetStats() : {})");
             if (res?.result?.value) {
               const s = JSON.parse(res.result.value);
               stats.clicks += s.clicks || 0;
+              stats.permissions += s.permissions || 0;
               stats.blocked += s.blocked || 0;
               stats.fileEdits += s.fileEdits || 0;
               stats.terminalCommands += s.terminalCommands || 0;
+              if (s.lastActionLabel) {
+                stats.lastAction = s.lastAction || "";
+                stats.lastActionLabel = s.lastActionLabel || "";
+              }
             }
           } catch (e) {
           }
@@ -4029,6 +4096,7 @@ var backgroundModeEnabled = false;
 var pollTimer;
 var statusBarItem;
 var statusBackgroundItem;
+var statusControlPanelItem;
 var outputChannel;
 var currentIDE = "unknown";
 var globalContext;
@@ -4039,10 +4107,38 @@ var lastBackgroundToggleTs = 0;
 var cdpRefreshTimer;
 var lastStatsLogTs = 0;
 var lastAntigravityDiscoveryLogTs = 0;
-var setupPromptShownThisSession = false;
 var antigravityDiscoveredCommands = [];
-var CDP_PORT = 9e3;
-var FIRST_RUN_SETUP_DONE_KEY = "auto-accept-free-first-run-setup-done-v2";
+var controlPanel = null;
+var cdpPort = 9e3;
+var savedLauncherPath = "";
+var savedLauncherPort = 0;
+var pauseOnCdpMismatch = true;
+var lastCdpMismatchNotificationTs = 0;
+var lastControlPanelStatePushTs = 0;
+var cdpRuntimeStatus = {
+  state: "unknown",
+  message: "",
+  expectedPort: 9e3,
+  activePorts: [],
+  connected: false,
+  mcp: null
+};
+var lastMcpDiscovery = {
+  checkedAt: 0,
+  found: false,
+  url: "",
+  port: 0,
+  reachable: false
+};
+var DEFAULT_CDP_PORT = 9e3;
+var CDP_SCAN_RANGE = 3;
+var SAVED_LAUNCHER_PATH_KEY = "auto-accept-free-saved-launcher-path-v1";
+var SAVED_LAUNCHER_PORT_KEY = "auto-accept-free-saved-launcher-port-v1";
+var CDP_MISMATCH_NOTIFY_COOLDOWN_MS = 3e4;
+var SETUP_PROMPT_SNOOZE_MS = 6 * 60 * 60 * 1e3;
+var SETUP_RETRY_SNOOZE_MS = 10 * 60 * 1e3;
+var MCP_DISCOVERY_CACHE_MS = 5e3;
+var DEVTOOLS_MARKER_MAX_AGE_MS = 10 * 60 * 1e3;
 var pollFrequency = 500;
 var bannedCommands = [];
 var ACCEPT_COMMANDS_VSCODE = [
@@ -4216,22 +4312,298 @@ function detectIDE() {
     return "Cursor";
   return "VS Code";
 }
+function getExtensionHostKind(context = globalContext) {
+  try {
+    const ext = context?.extension || vscode.extensions.getExtension("pesosz.antigravity-auto-accept");
+    if (!ext)
+      return "unknown";
+    if (ext.extensionKind === vscode.ExtensionKind.UI)
+      return "ui";
+    if (ext.extensionKind === vscode.ExtensionKind.Workspace)
+      return "workspace";
+  } catch (err) {
+    log(`[Runtime] Failed to detect extension host kind: ${err.message}`);
+  }
+  return "unknown";
+}
+function getAntigravityLogsRoot() {
+  const appData = process.env.APPDATA || "";
+  return appData ? path.join(appData, "Antigravity", "logs") : "";
+}
+function findLatestAntigravityMcpUrlFromLogs() {
+  const logsRoot = getAntigravityLogsRoot();
+  if (!logsRoot || !fs.existsSync(logsRoot)) {
+    return { found: false, url: "", port: 0 };
+  }
+  let newestLogPath = "";
+  let newestMtime = 0;
+  const stack = [logsRoot];
+  while (stack.length > 0) {
+    const current = stack.pop();
+    let entries = [];
+    try {
+      entries = fs.readdirSync(current, { withFileTypes: true });
+    } catch (err) {
+      continue;
+    }
+    for (const entry of entries) {
+      const full = path.join(current, entry.name);
+      if (entry.isDirectory()) {
+        stack.push(full);
+        continue;
+      }
+      if (!entry.isFile())
+        continue;
+      if (entry.name !== "Antigravity.log")
+        continue;
+      if (!full.includes(`${path.sep}google.antigravity${path.sep}`))
+        continue;
+      try {
+        const stat = fs.statSync(full);
+        if (stat.mtimeMs > newestMtime) {
+          newestMtime = stat.mtimeMs;
+          newestLogPath = full;
+        }
+      } catch (err) {
+      }
+    }
+  }
+  if (!newestLogPath) {
+    return { found: false, url: "", port: 0 };
+  }
+  let content = "";
+  try {
+    content = fs.readFileSync(newestLogPath, "utf8");
+  } catch (err) {
+    return { found: false, url: "", port: 0 };
+  }
+  const pattern = /Chrome DevTools MCP URL discovered at (http:\/\/127\.0\.0\.1:(\d+)\/mcp)/gi;
+  let match;
+  let lastMatch = null;
+  while ((match = pattern.exec(content)) !== null) {
+    lastMatch = match;
+  }
+  if (!lastMatch) {
+    return { found: false, url: "", port: 0 };
+  }
+  const url = String(lastMatch[1] || "");
+  const port = normalizeCdpPort(lastMatch[2], 0);
+  if (!url || !port) {
+    return { found: false, url: "", port: 0 };
+  }
+  return { found: true, url, port };
+}
+async function isMcpEndpointReachable(mcpUrl) {
+  return new Promise((resolve) => {
+    let parsed;
+    try {
+      parsed = new URL(mcpUrl);
+    } catch (err) {
+      resolve(false);
+      return;
+    }
+    const req = http.get({
+      hostname: parsed.hostname,
+      port: Number(parsed.port || 80),
+      path: parsed.pathname || "/mcp",
+      timeout: 900,
+      headers: {
+        Accept: "text/event-stream"
+      }
+    }, (res) => {
+      const ok = res.statusCode === 200 || res.statusCode === 406;
+      res.resume();
+      resolve(ok);
+    });
+    req.on("error", () => resolve(false));
+    req.on("timeout", () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+async function detectAntigravityMcpEndpoint() {
+  const now = Date.now();
+  if (now - lastMcpDiscovery.checkedAt < MCP_DISCOVERY_CACHE_MS) {
+    return { ...lastMcpDiscovery };
+  }
+  const latest = findLatestAntigravityMcpUrlFromLogs();
+  if (!latest.found) {
+    lastMcpDiscovery = {
+      checkedAt: now,
+      found: false,
+      url: "",
+      port: 0,
+      reachable: false
+    };
+    return { ...lastMcpDiscovery };
+  }
+  const reachable = await isMcpEndpointReachable(latest.url);
+  lastMcpDiscovery = {
+    checkedAt: now,
+    found: true,
+    url: latest.url,
+    port: latest.port,
+    reachable
+  };
+  log(`[Setup] MCP discovery: url=${latest.url} reachable=${reachable}`);
+  return { ...lastMcpDiscovery };
+}
+function normalizeCdpPort(value, fallback = DEFAULT_CDP_PORT) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+  const port = Math.trunc(parsed);
+  if (port < 1 || port > 65535) {
+    return fallback;
+  }
+  return port;
+}
+function readAntigravityDevToolsMarker() {
+  const appDataDir = process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming");
+  const markerPath = path.join(appDataDir, "Antigravity", "DevToolsActivePort");
+  if (!fs.existsSync(markerPath)) {
+    return { found: false, path: markerPath, port: 0, browserPath: "", ageMs: Number.POSITIVE_INFINITY };
+  }
+  try {
+    const stat = fs.statSync(markerPath);
+    const raw = fs.readFileSync(markerPath, "utf8");
+    const lines = raw.split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+    const port = normalizeCdpPort(lines[0], 0);
+    return {
+      found: port > 0,
+      path: markerPath,
+      port,
+      browserPath: lines[1] || "",
+      ageMs: Date.now() - stat.mtimeMs
+    };
+  } catch (err) {
+    return { found: false, path: markerPath, port: 0, browserPath: "", ageMs: Number.POSITIVE_INFINITY };
+  }
+}
+function getCdpPortCandidates(preferredPort) {
+  const expected = normalizeCdpPort(preferredPort, DEFAULT_CDP_PORT);
+  const candidates = /* @__PURE__ */ new Set([expected, 9e3, 9222, 9229]);
+  for (let offset = -CDP_SCAN_RANGE; offset <= CDP_SCAN_RANGE; offset++) {
+    const port = expected + offset;
+    if (port >= 1 && port <= 65535) {
+      candidates.add(port);
+    }
+  }
+  return [...candidates].sort((a, b) => a - b);
+}
+async function detectCdpRuntimeStatus(expectedPort = cdpPort) {
+  const expected = normalizeCdpPort(expectedPort, DEFAULT_CDP_PORT);
+  const expectedReady = await isCDPPortReady(expected, 900);
+  const activePorts = [];
+  const candidates = getCdpPortCandidates(expected);
+  const isAntigravity = (currentIDE || "").toLowerCase() === "antigravity";
+  const antigravityExeInfo = isAntigravity ? resolveEditorExecutable("antigravity") : null;
+  const antigravityRunning = process.platform === "win32" && antigravityExeInfo ? isWindowsProcessRunning(antigravityExeInfo) : false;
+  const devToolsMarker = isAntigravity ? readAntigravityDevToolsMarker() : null;
+  const markerMatchesExpected = !!(devToolsMarker?.found && devToolsMarker.port === expected && devToolsMarker.ageMs <= DEVTOOLS_MARKER_MAX_AGE_MS && antigravityRunning);
+  for (const port of candidates) {
+    if (port === expected && (expectedReady || markerMatchesExpected)) {
+      activePorts.push(port);
+      continue;
+    }
+    const ready = await isCDPPortReady(port, 400);
+    if (ready) {
+      activePorts.push(port);
+    }
+  }
+  const connected = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
+  const otherActivePorts = activePorts.filter((port) => port !== expected);
+  let state = "ok";
+  let message = `CDP ready on port ${expected}.`;
+  let mcp = null;
+  if (!expectedReady && !markerMatchesExpected && otherActivePorts.length > 0) {
+    state = "wrong_port";
+    message = `CDP is active on ${otherActivePorts.join(", ")} but expected port is ${expected}.`;
+  } else if (!expectedReady && !markerMatchesExpected) {
+    state = "not_ready";
+    message = `CDP is not active on port ${expected}.`;
+  } else if ((expectedReady || markerMatchesExpected) && !connected && isAntigravity) {
+    state = "connecting";
+    message = markerMatchesExpected ? `Antigravity reports DevTools on port ${expected}; waiting for panel target connection.` : `CDP is on port ${expected}, waiting for panel target connection.`;
+  }
+  if (!expectedReady && !markerMatchesExpected && isAntigravity) {
+    const mcpInfo = await detectAntigravityMcpEndpoint();
+    if (mcpInfo.found) {
+      state = "mcp_only";
+      message = mcpInfo.reachable ? `Antigravity MCP endpoint detected on port ${mcpInfo.port}; CDP /json endpoint was not found on ${expected}.` : `Antigravity MCP endpoint was discovered recently (${mcpInfo.url}), but is not reachable now; CDP /json endpoint was not found on ${expected}.`;
+      mcp = { url: mcpInfo.url, port: mcpInfo.port, reachable: mcpInfo.reachable };
+    }
+  }
+  return {
+    state,
+    message,
+    expectedPort: expected,
+    activePorts,
+    connected,
+    mcp
+  };
+}
+function markCdpRuntimeStatus(status) {
+  cdpRuntimeStatus = status || cdpRuntimeStatus;
+}
+function maybeNotifyCdpMismatch(status) {
+  if (!pauseOnCdpMismatch)
+    return;
+  if (!isEnabled)
+    return;
+  if ((currentIDE || "").toLowerCase() !== "antigravity")
+    return;
+  if (status?.state === "mcp_only")
+    return;
+  if (!status || status.state !== "wrong_port" && status.state !== "not_ready")
+    return;
+  const now = Date.now();
+  if (now - lastCdpMismatchNotificationTs < CDP_MISMATCH_NOTIFY_COOLDOWN_MS) {
+    return;
+  }
+  lastCdpMismatchNotificationTs = now;
+  vscode.window.showWarningMessage(`Auto Accept paused: ${status.message} Open "Antigravity Auto Accept: Open Control Panel" to fix.`);
+}
 function resolveEditorExecutable(ideName) {
   const ide = String(ideName || "").toLowerCase();
   if (ide === "antigravity") {
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    const programFiles = process.env.ProgramFiles || "C:\\Program Files";
+    const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
     return {
       ide: "antigravity",
       appName: "Antigravity",
-      exePath: path.join(os.homedir(), "AppData", "Local", "Programs", "Antigravity", "Antigravity.exe"),
-      processName: "Antigravity.exe"
+      exePath: path.join(localAppData, "Programs", "Antigravity", "Antigravity.exe"),
+      exeCandidates: [
+        path.join(localAppData, "Programs", "Antigravity", "Antigravity.exe"),
+        path.join(localAppData, "Programs", "antigravity", "Antigravity.exe"),
+        path.join(programFiles, "Antigravity", "Antigravity.exe"),
+        path.join(programFilesX86, "Antigravity", "Antigravity.exe")
+      ],
+      processName: "Antigravity.exe",
+      macAppName: "Antigravity",
+      linuxCommand: "antigravity"
     };
   }
   if (ide === "cursor") {
+    const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
+    const programFiles = process.env.ProgramFiles || "C:\\Program Files";
+    const programFilesX86 = process.env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
     return {
       ide: "cursor",
       appName: "Cursor",
-      exePath: path.join(os.homedir(), "AppData", "Local", "Programs", "cursor", "Cursor.exe"),
-      processName: "Cursor.exe"
+      exePath: path.join(localAppData, "Programs", "cursor", "Cursor.exe"),
+      exeCandidates: [
+        path.join(localAppData, "Programs", "cursor", "Cursor.exe"),
+        path.join(localAppData, "Programs", "Cursor", "Cursor.exe"),
+        path.join(programFiles, "Cursor", "Cursor.exe"),
+        path.join(programFilesX86, "Cursor", "Cursor.exe")
+      ],
+      processName: "Cursor.exe",
+      macAppName: "Cursor",
+      linuxCommand: "cursor"
     };
   }
   return null;
@@ -4246,135 +4618,45 @@ function getDesktopDir() {
 function escapePowerShellSingleQuoted(input) {
   return String(input || "").replace(/'/g, "''");
 }
-function quoteCmdArg(arg) {
-  const text = String(arg ?? "");
-  if (text.length === 0) {
-    return '""';
-  }
-  if (/[\s"&()^<>|]/.test(text)) {
-    return `"${text.replace(/"/g, '""')}"`;
-  }
-  return text;
+function quoteShArg(arg) {
+  return `'${String(arg ?? "").replace(/'/g, "'\\''")}'`;
 }
-function getWindowsMainProcessCommandLine(exeInfo) {
-  if (process.platform !== "win32" || !exeInfo?.processName) {
-    return "";
+function formatSpawnSyncError(result, fallbackMessage) {
+  if (!result)
+    return fallbackMessage;
+  if (result.error?.message) {
+    return `${fallbackMessage}: ${result.error.message}`;
   }
-  const procName = escapePowerShellSingleQuoted(exeInfo.processName);
-  const psScript = [
-    `$proc = Get-CimInstance Win32_Process -Filter "Name='${procName}'" |`,
-    " Where-Object { $_.CommandLine -and $_.CommandLine -notmatch '--type=' } |",
-    " Select-Object -First 1 -ExpandProperty CommandLine;",
-    "if ($proc) { Write-Output $proc }"
-  ].join("");
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
-    windowsHide: true
-  });
-  if (result.status !== 0) {
-    return "";
-  }
-  return result.stdout ? result.stdout.toString().trim() : "";
+  const stderr = result.stderr ? result.stderr.toString().trim() : "";
+  const stdout = result.stdout ? result.stdout.toString().trim() : "";
+  const detail = stderr || stdout;
+  return detail ? `${fallbackMessage}: ${detail}` : fallbackMessage;
 }
-function extractCliOptionValue(commandLine, optionName) {
-  if (!commandLine || !optionName) {
+function resolveExistingWindowsExecutable(exeInfo) {
+  if (!exeInfo)
     return "";
-  }
-  const escaped = optionName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const eqPattern = new RegExp(`${escaped}=("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
-  const spacedPattern = new RegExp(`${escaped}\\s+("([^"]+)"|'([^']+)'|([^\\s]+))`, "i");
-  const eqMatch = commandLine.match(eqPattern);
-  if (eqMatch) {
-    return eqMatch[2] || eqMatch[3] || eqMatch[4] || "";
-  }
-  const spacedMatch = commandLine.match(spacedPattern);
-  if (spacedMatch) {
-    return spacedMatch[2] || spacedMatch[3] || spacedMatch[4] || "";
+  const candidates = Array.isArray(exeInfo.exeCandidates) && exeInfo.exeCandidates.length > 0 ? exeInfo.exeCandidates : [exeInfo.exePath];
+  for (const exePath of candidates) {
+    if (exePath && fs.existsSync(exePath)) {
+      return exePath;
+    }
   }
   return "";
 }
-function getWindowsRelaunchArgs(exeInfo) {
-  const commandLine = getWindowsMainProcessCommandLine(exeInfo);
-  if (!commandLine) {
-    return [];
+function isWindowsProcessRunning(exeInfo) {
+  if (process.platform !== "win32" || !exeInfo?.processName) {
+    return false;
   }
-  const args = [];
-  const options = ["--user-data-dir", "--extensions-dir", "--profile"];
-  for (const optionName of options) {
-    const optionValue = extractCliOptionValue(commandLine, optionName);
-    if (optionValue) {
-      args.push(optionName, optionValue);
-    }
-  }
-  return args;
-}
-function buildManualRestartNote(exeInfo, shortcutPath, port = CDP_PORT) {
-  const appName = exeInfo?.appName || "the IDE";
-  return [
-    `${appName} will be relaunched with CDP on port ${port}.`,
-    "If it does not reopen in the correct window/profile, close the IDE and open this desktop shortcut manually:",
-    shortcutPath,
-    "In some environments, first-time setup may require 2-3 restarts."
-  ].join("\n");
-}
-function writeWindowsCdpLauncher(exeInfo, port = CDP_PORT, relaunchArgs = []) {
-  const desktopDir = getDesktopDir();
-  if (!fs.existsSync(desktopDir)) {
-    fs.mkdirSync(desktopDir, { recursive: true });
-  }
-  const launcherName = `Start ${exeInfo.appName} (CDP ${port}).cmd`;
-  const launcherPath = path.join(desktopDir, launcherName);
-  const launchArgs = [`--remote-debugging-port=${port}`, ...relaunchArgs];
-  const launchArgString = launchArgs.map(quoteCmdArg).join(" ");
-  const launcherContent = [
-    "@echo off",
-    "setlocal",
-    'set "ELECTRON_RUN_AS_NODE="',
-    `taskkill /IM "${exeInfo.processName}" /F >nul 2>&1`,
-    "timeout /t 1 /nobreak >nul",
-    `if exist "${exeInfo.exePath}" (`,
-    `  start "" "${exeInfo.exePath}" ${launchArgString}`,
-    "  exit /b 0",
-    ")",
-    `echo Unable to find executable: ${exeInfo.exePath}`,
-    "exit /b 1"
-  ].join("\r\n");
-  fs.writeFileSync(launcherPath, launcherContent, "ascii");
-  return launcherPath;
-}
-function writeWindowsDesktopShortcut(targetCmdPath, exeInfo, port = CDP_PORT) {
-  const desktopDir = getDesktopDir();
-  const shortcutPath = path.join(desktopDir, `Start ${exeInfo.appName} (CDP ${port}).lnk`);
-  const targetEsc = escapePowerShellSingleQuoted(targetCmdPath);
-  const workDirEsc = escapePowerShellSingleQuoted(path.dirname(exeInfo.exePath));
-  const iconEsc = escapePowerShellSingleQuoted(exeInfo.exePath);
-  const lnkEsc = escapePowerShellSingleQuoted(shortcutPath);
-  const psScript = [
-    "$WScriptShell = New-Object -ComObject WScript.Shell",
-    `$Shortcut = $WScriptShell.CreateShortcut('${lnkEsc}')`,
-    `$Shortcut.TargetPath = '${targetEsc}'`,
-    `$Shortcut.WorkingDirectory = '${workDirEsc}'`,
-    `$Shortcut.IconLocation = '${iconEsc},0'`,
-    "$Shortcut.Save()"
-  ].join(";");
-  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+  const result = spawnSync("tasklist", ["/FI", `IMAGENAME eq ${exeInfo.processName}`, "/FO", "CSV", "/NH"], {
     windowsHide: true
   });
-  if (result.status !== 0) {
-    const stderr = result.stderr ? result.stderr.toString().trim() : "";
-    throw new Error(`Failed to create desktop shortcut: ${stderr || "unknown error"}`);
+  if (result.status !== 0 || result.error) {
+    return false;
   }
-  return shortcutPath;
+  const output = result.stdout ? result.stdout.toString().toLowerCase() : "";
+  return output.includes(exeInfo.processName.toLowerCase());
 }
-function runWindowsLauncherDetached(launcherPath) {
-  const launchCommand = `start "" "${launcherPath}"`;
-  const child = spawn("cmd.exe", ["/d", "/s", "/c", launchCommand], {
-    detached: true,
-    stdio: "ignore",
-    windowsHide: true
-  });
-  child.unref();
-}
-async function isCDPPortReady(port = CDP_PORT, timeoutMs = 1200) {
+async function isCDPPortReady(port = cdpPort, timeoutMs = 1200) {
   return new Promise((resolve) => {
     const req = http.get({
       hostname: "127.0.0.1",
@@ -4392,98 +4674,538 @@ async function isCDPPortReady(port = CDP_PORT, timeoutMs = 1200) {
     });
   });
 }
-async function createAndRunAutomaticCdpSetup() {
-  const exeInfo = resolveEditorExecutable(currentIDE);
-  if (!exeInfo) {
-    return { ok: false, error: `Automatic setup is not available for ${currentIDE}.` };
+function buildManualLaunchCommand(port = cdpPort) {
+  const expectedPort = normalizeCdpPort(port, cdpPort);
+  const ide = (currentIDE || "").toLowerCase();
+  if (process.platform === "win32") {
+    return ide === "antigravity" ? `$exeCandidates = @("$env:LOCALAPPDATA\\Programs\\Antigravity\\Antigravity.exe", "$env:ProgramFiles\\Antigravity\\Antigravity.exe", "$env:ProgramFiles(x86)\\Antigravity\\Antigravity.exe"); $exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { Write-Host 'Antigravity executable not found'; exit 1 }; Start-Process $exe -ArgumentList '--remote-debugging-port=${expectedPort}'` : `$exeCandidates = @("$env:LOCALAPPDATA\\Programs\\cursor\\Cursor.exe", "$env:ProgramFiles\\Cursor\\Cursor.exe", "$env:ProgramFiles(x86)\\Cursor\\Cursor.exe"); $exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { Write-Host 'Cursor executable not found'; exit 1 }; Start-Process $exe -ArgumentList '--remote-debugging-port=${expectedPort}'`;
   }
-  if (!fs.existsSync(exeInfo.exePath)) {
-    return { ok: false, error: `${exeInfo.appName} executable not found at ${exeInfo.exePath}` };
+  if (process.platform === "darwin") {
+    return ide === "antigravity" ? `open -n -a Antigravity --args --remote-debugging-port=${expectedPort}` : `open -n -a Cursor --args --remote-debugging-port=${expectedPort}`;
   }
-  if (process.platform !== "win32") {
-    return { ok: false, error: "Automatic desktop shortcut setup is currently supported on Windows only." };
+  return ide === "antigravity" ? `antigravity --remote-debugging-port=${expectedPort} >/dev/null 2>&1 &` : `cursor --remote-debugging-port=${expectedPort} >/dev/null 2>&1 &`;
+}
+function getLauncherFileExtension() {
+  if (process.platform === "win32")
+    return "lnk";
+  if (process.platform === "darwin")
+    return "command";
+  return "sh";
+}
+function getLauncherSaveFilters() {
+  if (process.platform === "win32")
+    return { "Windows Shortcut": ["lnk"] };
+  if (process.platform === "darwin")
+    return { "Command File": ["command"] };
+  return { "Shell Script": ["sh"] };
+}
+function sanitizeLauncherBaseName(input) {
+  return String(input || "IDE").replace(/[\\/:*?"<>|]/g, "").trim() || "IDE";
+}
+function getDefaultLauncherFileName(exeInfo, port = cdpPort) {
+  const safeName = sanitizeLauncherBaseName(exeInfo?.appName || currentIDE || "IDE");
+  const ext = getLauncherFileExtension();
+  if (process.platform === "linux") {
+    return `start-${safeName.toLowerCase().replace(/\s+/g, "-")}-cdp-${port}.${ext}`;
+  }
+  return `Start ${safeName} (CDP ${port}).${ext}`;
+}
+function buildPortableLauncherScript(exeInfo, port = cdpPort) {
+  const expectedPort = normalizeCdpPort(port, cdpPort);
+  if (process.platform === "win32") {
+    return "";
+  }
+  if (process.platform === "darwin") {
+    const appName = exeInfo?.macAppName || exeInfo?.appName || "Antigravity";
+    return [
+      "#!/bin/sh",
+      "set -eu",
+      `open -n -a ${quoteShArg(appName)} --args --remote-debugging-port=${expectedPort} "$@"`
+    ].join("\n") + "\n";
+  }
+  const commandName = exeInfo?.linuxCommand || ((currentIDE || "").toLowerCase() === "cursor" ? "cursor" : "antigravity");
+  return [
+    "#!/usr/bin/env sh",
+    "set -eu",
+    `if ! command -v ${quoteShArg(commandName)} >/dev/null 2>&1; then`,
+    `  echo "Command '${commandName}' not found in PATH." >&2`,
+    "  exit 1",
+    "fi",
+    `nohup ${quoteShArg(commandName)} --remote-debugging-port=${expectedPort} "$@" >/dev/null 2>&1 &`
+  ].join("\n") + "\n";
+}
+function findWindowsShortcutTemplateCandidates(exeInfo, port = cdpPort) {
+  const appName = String(exeInfo?.appName || currentIDE || "IDE").trim();
+  const normalizedPort = normalizeCdpPort(port, cdpPort);
+  const desktopDir = getDesktopDir();
+  const candidates = [
+    path.join(desktopDir, `${appName} (CDP).lnk`),
+    path.join(desktopDir, `${appName} (CDP ${normalizedPort}).lnk`),
+    path.join(desktopDir, `Start ${appName} (CDP ${normalizedPort}).lnk`),
+    path.join(desktopDir, `Start ${appName} (CDP).lnk`)
+  ];
+  return [...new Set(candidates.filter(Boolean))];
+}
+function readWindowsShortcutDetails(shortcutPath) {
+  if (!shortcutPath || !fs.existsSync(shortcutPath)) {
+    return null;
+  }
+  const shortcutEsc = escapePowerShellSingleQuoted(shortcutPath);
+  const psScript = [
+    "$WScriptShell = New-Object -ComObject WScript.Shell",
+    `$Shortcut = $WScriptShell.CreateShortcut('${shortcutEsc}')`,
+    "$result = [PSCustomObject]@{",
+    "  TargetPath = $Shortcut.TargetPath",
+    "  Arguments = $Shortcut.Arguments",
+    "  WorkingDirectory = $Shortcut.WorkingDirectory",
+    "  IconLocation = $Shortcut.IconLocation",
+    "}",
+    "$result | ConvertTo-Json -Compress"
+  ].join(";");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0 || result.error) {
+    return null;
+  }
+  const stdout = result.stdout ? result.stdout.toString().trim() : "";
+  if (!stdout) {
+    return null;
   }
   try {
-    const relaunchArgs = getWindowsRelaunchArgs(exeInfo);
-    if (relaunchArgs.length > 0) {
-      log(`[Setup] Preserving launch args: ${relaunchArgs.join(" ")}`);
-    }
-    const launcherPath = writeWindowsCdpLauncher(exeInfo, CDP_PORT, relaunchArgs);
-    const shortcutPath = writeWindowsDesktopShortcut(launcherPath, exeInfo, CDP_PORT);
-    const alreadyReady = await isCDPPortReady(CDP_PORT, 1200);
-    let restarted = false;
-    if (!alreadyReady) {
-      const restartChoice = await vscode.window.showWarningMessage(
-        buildManualRestartNote(exeInfo, shortcutPath, CDP_PORT),
-        { modal: true },
-        "Restart Now",
-        "I Will Restart Manually"
-      );
-      if (restartChoice !== "I Will Restart Manually") {
-        runWindowsLauncherDetached(launcherPath);
-        restarted = true;
-      }
-    }
-    return {
-      ok: true,
-      launcherPath,
-      shortcutPath,
-      alreadyReady,
-      restarted
-    };
+    return JSON.parse(stdout);
   } catch (err) {
-    return { ok: false, error: err.message || String(err) };
+    return null;
   }
 }
-async function maybePromptFirstRunSetup(context) {
-  const ide = (currentIDE || "").toLowerCase();
-  if (ide !== "antigravity") {
-    return;
-  }
-  const setupDone = !!context.globalState.get(FIRST_RUN_SETUP_DONE_KEY, false);
-  const cdpReady = await isCDPPortReady(CDP_PORT, 1200);
-  log(`[Setup] CDP check: ready=${cdpReady} setupDone=${setupDone}`);
-  if (cdpReady) {
-    if (!setupDone) {
-      await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
-      log("[Setup] CDP detected; marking setup done");
+function findExistingWindowsShortcutTemplate(exeInfo, port = cdpPort) {
+  const normalizedPort = normalizeCdpPort(port, cdpPort);
+  const directArg = `--remote-debugging-port=${normalizedPort}`;
+  for (const candidate of findWindowsShortcutTemplateCandidates(exeInfo, normalizedPort)) {
+    const details = readWindowsShortcutDetails(candidate);
+    if (!details) {
+      continue;
     }
-    return;
+    if (details.TargetPath && fs.existsSync(details.TargetPath) && String(details.Arguments || "").includes(directArg)) {
+      return {
+        path: candidate,
+        details
+      };
+    }
   }
-  if (setupDone) {
-    await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, false);
-    log("[Setup] CDP missing while setupDone was true; resetting setupDone=false");
+  return null;
+}
+function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
+  const expectedPort = normalizeCdpPort(port, cdpPort);
+  const template = findExistingWindowsShortcutTemplate(exeInfo, expectedPort);
+  if (template?.path && path.resolve(template.path) !== path.resolve(shortcutPath)) {
+    fs.copyFileSync(template.path, shortcutPath);
+    if (fs.existsSync(shortcutPath)) {
+      return {
+        path: shortcutPath,
+        targetPath: template.details?.TargetPath || "",
+        arguments: template.details?.Arguments || `--remote-debugging-port=${expectedPort}`,
+        copiedFrom: template.path
+      };
+    }
   }
-  if (setupPromptShownThisSession) {
-    return;
-  }
-  setupPromptShownThisSession = true;
-  const choice = await vscode.window.showWarningMessage(
-    `CDP is not enabled on port ${CDP_PORT}. Antigravity Auto Accept can configure this automatically, create a desktop shortcut, and restart Antigravity now. Set it up now?`,
-    { modal: true },
-    "Set Up Now",
-    "Later"
-  );
-  log(`[Setup] Prompt choice: ${choice || "dismissed"}`);
-  if (choice !== "Set Up Now") {
-    return;
-  }
-  const result = await createAndRunAutomaticCdpSetup();
-  if (!result.ok) {
-    vscode.window.showErrorMessage(`Auto setup failed: ${result.error}`);
-    return;
-  }
-  if (result.alreadyReady || result.restarted) {
-    await context.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
-    log("[Setup] Automatic setup finished successfully");
-  } else {
-    log("[Setup] Setup files created; waiting for user manual restart");
-    vscode.window.showWarningMessage(
-      buildManualRestartNote(resolveEditorExecutable(currentIDE), result.shortcutPath, CDP_PORT),
-      { modal: true },
-      "OK"
+  const resolvedExePath = template?.details?.TargetPath || resolveExistingWindowsExecutable(exeInfo);
+  if (!resolvedExePath) {
+    const candidates = Array.isArray(exeInfo?.exeCandidates) && exeInfo.exeCandidates.length > 0 ? exeInfo.exeCandidates.filter(Boolean) : [exeInfo?.exePath].filter(Boolean);
+    throw new Error(
+      `Could not find ${exeInfo?.appName || "IDE"} executable. Checked: ${candidates.join(", ")}`
     );
   }
+  const shortcutEsc = escapePowerShellSingleQuoted(shortcutPath);
+  const targetEsc = escapePowerShellSingleQuoted(resolvedExePath);
+  const workingDirectory = template?.details?.WorkingDirectory || path.dirname(resolvedExePath);
+  const iconLocation = template?.details?.IconLocation || `${resolvedExePath},0`;
+  const workDirEsc = escapePowerShellSingleQuoted(workingDirectory);
+  const iconEsc = escapePowerShellSingleQuoted(iconLocation);
+  const argsEsc = escapePowerShellSingleQuoted(`--remote-debugging-port=${expectedPort}`);
+  const psScript = [
+    "$WScriptShell = New-Object -ComObject WScript.Shell",
+    `$Shortcut = $WScriptShell.CreateShortcut('${shortcutEsc}')`,
+    `$Shortcut.TargetPath = '${targetEsc}'`,
+    `$Shortcut.Arguments = '${argsEsc}'`,
+    `$Shortcut.WorkingDirectory = '${workDirEsc}'`,
+    `$Shortcut.IconLocation = '${iconEsc}'`,
+    "$Shortcut.Save()"
+  ].join(";");
+  const result = spawnSync("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", psScript], {
+    windowsHide: true
+  });
+  if (result.status !== 0 || result.error) {
+    throw new Error(formatSpawnSyncError(result, `Failed to create shortcut ${shortcutPath}`));
+  }
+  if (!fs.existsSync(shortcutPath)) {
+    throw new Error(`Shortcut file was not created: ${shortcutPath}`);
+  }
+  return {
+    path: shortcutPath,
+    targetPath: resolvedExePath,
+    arguments: `--remote-debugging-port=${expectedPort}`
+  };
+}
+function buildLauncherManualSteps(savedPath, port = cdpPort) {
+  if (!savedPath) {
+    return "No launcher saved yet.";
+  }
+  const expectedPort = normalizeCdpPort(port, cdpPort);
+  const folderPath = path.dirname(savedPath);
+  const fileName = path.basename(savedPath);
+  if (process.platform === "win32") {
+    return [
+      `1. Open File Explorer and go to: ${folderPath}`,
+      `2. Double-click: ${fileName}`,
+      `3. Always launch the IDE through this file when you want CDP port ${expectedPort}.`,
+      "4. Optional: create a shortcut/pin from this file for easier access."
+    ].join("\n");
+  }
+  if (process.platform === "darwin") {
+    return [
+      `1. Open Finder and go to: ${folderPath}`,
+      `2. Run: ${fileName}`,
+      "3. First run may require Right click -> Open -> Open (macOS Gatekeeper).",
+      `4. Always launch the IDE with this file when you want CDP port ${expectedPort}.`
+    ].join("\n");
+  }
+  return [
+    `1. Open a terminal in: ${folderPath}`,
+    `2. Run: "${savedPath}"`,
+    '3. If needed, make sure it is executable: chmod +x "<saved launcher path>".',
+    `4. Always launch the IDE with this file when you want CDP port ${expectedPort}.`
+  ].join("\n");
+}
+async function saveLauncherForPort(port = cdpPort) {
+  const expectedPort = normalizeCdpPort(port, cdpPort);
+  const exeInfo = resolveEditorExecutable(currentIDE);
+  if (!exeInfo) {
+    return { ok: false, error: `Launcher creation is not available for ${currentIDE}.` };
+  }
+  const ext = getLauncherFileExtension();
+  const defaultName = getDefaultLauncherFileName(exeInfo, expectedPort);
+  const preferredTarget = savedLauncherPath && path.extname(savedLauncherPath).toLowerCase() === `.${ext}` ? savedLauncherPath : path.join(os.homedir(), defaultName);
+  const saveUri = await vscode.window.showSaveDialog({
+    saveLabel: "Save IDE Launcher",
+    defaultUri: vscode.Uri.file(preferredTarget),
+    filters: getLauncherSaveFilters()
+  });
+  if (!saveUri) {
+    return { ok: false, canceled: true };
+  }
+  const targetPath = saveUri.fsPath;
+  try {
+    if (process.platform === "win32") {
+      createWindowsLauncherShortcut(targetPath, exeInfo, expectedPort);
+    } else {
+      const launcherScript = buildPortableLauncherScript(exeInfo, expectedPort);
+      if (!launcherScript) {
+        return { ok: false, error: "Failed to build launcher script content." };
+      }
+      fs.writeFileSync(targetPath, launcherScript, "utf8");
+      fs.chmodSync(targetPath, 493);
+    }
+  } catch (err) {
+    return { ok: false, error: `Failed to save launcher: ${err.message}` };
+  }
+  savedLauncherPath = targetPath;
+  savedLauncherPort = expectedPort;
+  if (globalContext) {
+    await globalContext.globalState.update(SAVED_LAUNCHER_PATH_KEY, savedLauncherPath);
+    await globalContext.globalState.update(SAVED_LAUNCHER_PORT_KEY, savedLauncherPort);
+  }
+  const instructions = buildLauncherManualSteps(savedLauncherPath, savedLauncherPort);
+  return {
+    ok: true,
+    path: savedLauncherPath,
+    port: savedLauncherPort,
+    instructions
+  };
+}
+function getControlPanelHtml() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root {
+      --bg: #0f1217;
+      --panel: #151b23;
+      --panel-2: #1c2430;
+      --txt: #e6edf3;
+      --muted: #9aa7b5;
+      --accent: #2f81f7;
+      --ok: #2ea043;
+      --warn: #d29922;
+      --bad: #f85149;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 16px; font-family: "Segoe UI", system-ui, sans-serif; background: radial-gradient(1200px 500px at -20% -20%, #223146 0%, var(--bg) 48%); color: var(--txt); }
+    .wrap { max-width: 960px; margin: 0 auto; display: grid; gap: 12px; }
+    .card { background: linear-gradient(165deg, var(--panel), var(--panel-2)); border: 1px solid #2b3342; border-radius: 12px; padding: 12px; }
+    .head { display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+    h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: 0.2px; }
+    .muted { color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+    .stat { border: 1px solid #2b3342; border-radius: 10px; padding: 10px; background: #10161f; }
+    .k { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; }
+    .v { margin-top: 4px; font-size: 13px; word-break: break-word; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: end; }
+    label { font-size: 12px; color: var(--muted); display: grid; gap: 6px; }
+    input[type="number"] { width: 140px; padding: 8px; background: #0f141c; border: 1px solid #2b3342; border-radius: 8px; color: var(--txt); }
+    .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    button { border: 0; border-radius: 8px; padding: 8px 10px; color: #fff; background: #2a3342; cursor: pointer; }
+    button.primary { background: var(--accent); }
+    button.good { background: #1f6b37; }
+    button.warn { background: #8a6517; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .status { padding: 8px 10px; border-radius: 8px; font-size: 12px; border: 1px solid #2b3342; background: #111820; }
+    .ok { color: #a7f3b6; border-color: #1f6b37; }
+    .warnc { color: #fcd58f; border-color: #8a6517; }
+    .bad { color: #ffb2ab; border-color: #8c2f2b; }
+    pre { margin: 0; white-space: pre-wrap; font-size: 11px; color: #b8c5d3; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="head">
+        <h1>Antigravity Auto Accept Control Panel</h1>
+        <button id="refresh">Refresh</button>
+      </div>
+      <div class="muted">Choose CDP port, save a launcher file anywhere on your machine, and follow the exact open steps.</div>
+    </div>
+
+    <div class="card">
+      <div id="status" class="status">Loading...</div>
+      <div class="grid" style="margin-top:10px;">
+        <div class="stat"><div class="k">IDE</div><div id="ide" class="v">-</div></div>
+        <div class="stat"><div class="k">Platform</div><div id="platform" class="v">-</div></div>
+        <div class="stat"><div class="k">Remote Context</div><div id="remote" class="v">-</div></div>
+        <div class="stat"><div class="k">Extension Host</div><div id="hostKind" class="v">-</div></div>
+        <div class="stat"><div class="k">Expected CDP Port</div><div id="portValue" class="v">-</div></div>
+        <div class="stat"><div class="k">Active CDP Ports</div><div id="ports" class="v">-</div></div>
+        <div class="stat"><div class="k">CDP Connections</div><div id="connections" class="v">-</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <label>CDP Port
+          <input id="portInput" type="number" min="1" max="65535" step="1" />
+        </label>
+        <button class="primary" id="savePort">Save Port</button>
+        <button class="good" id="saveLauncher">Save IDE Launcher...</button>
+      </div>
+      <div class="row" style="margin-top:8px;">
+        <label class="toggle"><input id="pauseOnMismatch" type="checkbox" /> Pause when CDP port mismatch is detected</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <button class="primary" id="toggleAuto">Toggle Auto Accept</button>
+        <button id="toggleBg">Toggle Background Mode</button>
+      </div>
+      <div class="muted" style="margin-top:8px;">Auto Accept: <span id="enabled">-</span> | Background: <span id="background">-</span></div>
+    </div>
+
+    <div class="card">
+      <div class="k">Saved Launcher Path</div>
+      <pre id="savedLauncherPath">-</pre>
+      <div class="muted" id="savedLauncherPort" style="margin-top:6px;">Launcher port: -</div>
+      <div class="k" style="margin-top:10px;">How To Open It</div>
+      <pre id="launcherSteps">Save a launcher first to get platform-specific steps.</pre>
+    </div>
+
+    <div class="card">
+      <div class="k">Manual Command (Alternative)</div>
+      <pre id="manualCmd">-</pre>
+    </div>
+  </div>
+
+  <script>
+    const vscode = acquireVsCodeApi();
+    const byId = (id) => document.getElementById(id);
+
+    function post(type, payload = {}) {
+      vscode.postMessage({ type, ...payload });
+    }
+
+    function setStatus(text, kind) {
+      const el = byId('status');
+      el.textContent = text;
+      el.className = 'status ' + (kind || '');
+    }
+
+    function render(state) {
+      byId('ide').textContent = state.ide || '-';
+      byId('platform').textContent = state.platform || '-';
+      byId('remote').textContent = state.remoteName || 'local';
+      byId('hostKind').textContent = state.extensionHostKind || 'unknown';
+      byId('portValue').textContent = String(state.cdpPort || '-');
+      byId('ports').textContent = (state.cdpStatus?.activePorts || []).length ? state.cdpStatus.activePorts.join(', ') : 'none';
+      byId('connections').textContent = String(state.connectionCount || 0);
+      byId('enabled').textContent = state.isEnabled ? 'ON' : 'OFF';
+      byId('background').textContent = state.backgroundModeEnabled ? 'ON' : 'OFF';
+      byId('manualCmd').textContent = state.manualLaunchCommand || '-';
+      byId('savedLauncherPath').textContent = state.savedLauncherPath || '-';
+      byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
+      byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
+      byId('portInput').value = String(state.cdpPort || '');
+      byId('pauseOnMismatch').checked = !!state.pauseOnCdpMismatch;
+
+      const s = state.cdpStatus || {};
+      byId('saveLauncher').disabled = false;
+      if (s.state === 'ok') setStatus(s.message || 'CDP is ready.', 'ok');
+      else if (s.state === 'connecting') setStatus(s.message || 'CDP is starting.', 'warnc');
+      else if (s.state === 'mcp_only') setStatus(s.message || 'MCP mode detected; fixed CDP launcher is not available.', 'warnc');
+      else if (s.state === 'wrong_port') setStatus(s.message || 'Wrong CDP port.', 'bad');
+      else setStatus(s.message || 'CDP is not ready.', 'warnc');
+    }
+
+    window.addEventListener('message', (event) => {
+      const msg = event.data || {};
+      if (msg.type === 'state') {
+        render(msg.state || {});
+      }
+    });
+
+    byId('refresh').addEventListener('click', () => post('refresh'));
+    byId('savePort').addEventListener('click', () => post('savePort', { port: Number(byId('portInput').value) }));
+    byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: Number(byId('portInput').value) }));
+    byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));
+    byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
+    byId('pauseOnMismatch').addEventListener('change', (e) => post('setPauseOnMismatch', { value: !!e.target.checked }));
+
+    post('ready');
+    setInterval(() => post('refresh'), 4000);
+  </script>
+</body>
+</html>`;
+}
+async function buildControlPanelState() {
+  const status = await detectCdpRuntimeStatus(cdpPort);
+  markCdpRuntimeStatus(status);
+  const extensionHostKind = getExtensionHostKind(globalContext);
+  const launcherPort = normalizeCdpPort(savedLauncherPort || cdpPort, cdpPort);
+  const launcherSteps = buildLauncherManualSteps(savedLauncherPath, launcherPort);
+  return {
+    ide: currentIDE,
+    platform: process.platform,
+    remoteName: vscode.env.remoteName || "",
+    extensionHostKind,
+    isEnabled,
+    backgroundModeEnabled,
+    cdpPort,
+    pauseOnCdpMismatch,
+    cdpStatus: status,
+    connectionCount: cdpHandler ? cdpHandler.getConnectionCount() : 0,
+    manualLaunchCommand: buildManualLaunchCommand(cdpPort),
+    savedLauncherPath,
+    savedLauncherPort: launcherPort,
+    launcherSteps
+  };
+}
+async function postControlPanelState() {
+  if (!controlPanel)
+    return;
+  try {
+    const state = await buildControlPanelState();
+    controlPanel.webview.postMessage({ type: "state", state });
+    updateStatusBar();
+  } catch (err) {
+    log(`[Panel] Failed to post state: ${err.message}`);
+  }
+}
+async function openControlPanel(context) {
+  if (controlPanel) {
+    controlPanel.reveal(vscode.ViewColumn.Active);
+    await postControlPanelState();
+    return;
+  }
+  controlPanel = vscode.window.createWebviewPanel(
+    "autoAcceptControlPanel",
+    "Antigravity Auto Accept: Control Panel",
+    vscode.ViewColumn.Active,
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true
+    }
+  );
+  controlPanel.webview.html = getControlPanelHtml();
+  controlPanel.onDidDispose(() => {
+    controlPanel = null;
+  }, null, context.subscriptions);
+  controlPanel.webview.onDidReceiveMessage(async (msg) => {
+    if (!msg || typeof msg.type !== "string")
+      return;
+    try {
+      if (msg.type === "ready" || msg.type === "refresh") {
+        await postControlPanelState();
+        return;
+      }
+      if (msg.type === "savePort") {
+        const newPort = normalizeCdpPort(msg.port, cdpPort);
+        await vscode.workspace.getConfiguration("autoAcceptFree").update("cdpPort", newPort, vscode.ConfigurationTarget.Global);
+        cdpPort = newPort;
+        if (isEnabled) {
+          await restartPolling();
+        }
+        vscode.window.showInformationMessage(`CDP port set to ${newPort}.`);
+        await postControlPanelState();
+        return;
+      }
+      if (msg.type === "setPauseOnMismatch") {
+        const value = !!msg.value;
+        await vscode.workspace.getConfiguration("autoAcceptFree").update("pauseOnCdpMismatch", value, vscode.ConfigurationTarget.Global);
+        pauseOnCdpMismatch = value;
+        updateStatusBar();
+        await postControlPanelState();
+        return;
+      }
+      if (msg.type === "saveLauncher") {
+        const launcherPort = normalizeCdpPort(msg.port, cdpPort);
+        log(`[Launcher] Save requested for port ${launcherPort}`);
+        const result = await saveLauncherForPort(launcherPort);
+        if (!result.ok) {
+          if (!result.canceled) {
+            vscode.window.showErrorMessage(`Save launcher failed: ${result.error}`);
+          }
+        } else {
+          const infoText = `Launcher saved at:
+${result.path}
+
+How to open:
+${result.instructions}`;
+          const infoAction = await vscode.window.showInformationMessage(infoText, { modal: true }, "Copy Steps");
+          if (infoAction === "Copy Steps") {
+            await vscode.env.clipboard.writeText(result.instructions);
+          }
+        }
+        await postControlPanelState();
+        return;
+      }
+      if (msg.type === "launchWithPort" || msg.type === "setup") {
+        vscode.window.showWarningMessage("Launch/setup actions were removed from this panel. Save a launcher file and open the IDE through it.");
+        return;
+      }
+      if (msg.type === "toggleAuto") {
+        await handleToggle(globalContext);
+        await postControlPanelState();
+        return;
+      }
+      if (msg.type === "toggleBackground") {
+        await handleBackgroundToggle(globalContext);
+        await postControlPanelState();
+      }
+    } catch (err) {
+      vscode.window.showErrorMessage(`Control panel error: ${err.message}`);
+    }
+  }, null, context.subscriptions);
+  await postControlPanelState();
 }
 async function activate(context) {
   globalContext = context;
@@ -4500,8 +5222,16 @@ async function activate(context) {
     statusBackgroundItem.text = "$(globe) Background: OFF";
     statusBackgroundItem.tooltip = "Background mode works across all agent chats";
     context.subscriptions.push(statusBackgroundItem);
+    statusControlPanelItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 98);
+    statusControlPanelItem.command = "auto-accept-free.openControlPanel";
+    statusControlPanelItem.text = "$(tools) Auto Accept Panel";
+    statusControlPanelItem.tooltip = "Open Antigravity Auto Accept Control Panel";
+    context.subscriptions.push(statusControlPanelItem);
+    statusControlPanelItem.show();
     const config = vscode.workspace.getConfiguration("autoAcceptFree");
     pollFrequency = config.get("pollInterval", 500);
+    cdpPort = normalizeCdpPort(config.get("cdpPort", DEFAULT_CDP_PORT), DEFAULT_CDP_PORT);
+    pauseOnCdpMismatch = !!config.get("pauseOnCdpMismatch", true);
     bannedCommands = config.get("bannedCommands", [
       "rm -rf /",
       "rm -rf ~",
@@ -4518,11 +5248,18 @@ async function activate(context) {
     const savedEnabled = context.globalState.get("auto-accept-free-enabled", false);
     isEnabled = !!savedEnabled;
     backgroundModeEnabled = context.globalState.get("auto-accept-free-background", false);
+    savedLauncherPath = String(context.globalState.get(SAVED_LAUNCHER_PATH_KEY, "") || "");
+    savedLauncherPort = normalizeCdpPort(context.globalState.get(SAVED_LAUNCHER_PORT_KEY, cdpPort), cdpPort);
     currentIDE = detectIDE();
     outputChannel = vscode.window.createOutputChannel("Antigravity Auto Accept");
     context.subscriptions.push(outputChannel);
     log(`Antigravity Auto Accept: Detected ${currentIDE}`);
     log(`Poll interval: ${pollFrequency}ms`);
+    log(`CDP port: ${cdpPort}`);
+    log(`Pause on mismatch: ${pauseOnCdpMismatch}`);
+    if (savedLauncherPath) {
+      log(`Saved launcher path: ${savedLauncherPath} (port ${savedLauncherPort})`);
+    }
     log(`Blocked command patterns: ${bannedCommands.length}`);
     await refreshRuntimeSafeCommands();
     if (runtimeCommandRefreshTimer) {
@@ -4551,30 +5288,30 @@ async function activate(context) {
     context.subscriptions.push(
       vscode.commands.registerCommand("auto-accept-free.toggle", () => handleToggle(context)),
       vscode.commands.registerCommand("auto-accept-free.toggleBackground", () => handleBackgroundToggle(context)),
-      vscode.commands.registerCommand("auto-accept-free.setupCDP", () => handleSetupCDP())
+      vscode.commands.registerCommand("auto-accept-free.setupCDP", () => handleSetupCDP()),
+      vscode.commands.registerCommand("auto-accept-free.openControlPanel", () => openControlPanel(context))
     );
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration("autoAcceptFree")) {
           const newConfig = vscode.workspace.getConfiguration("autoAcceptFree");
           pollFrequency = newConfig.get("pollInterval", 500);
+          cdpPort = normalizeCdpPort(newConfig.get("cdpPort", DEFAULT_CDP_PORT), DEFAULT_CDP_PORT);
+          pauseOnCdpMismatch = !!newConfig.get("pauseOnCdpMismatch", true);
           bannedCommands = newConfig.get("bannedCommands", []);
-          log(`Settings updated: ${pollFrequency}ms`);
+          log(`Settings updated: ${pollFrequency}ms, cdpPort=${cdpPort}, pauseOnMismatch=${pauseOnCdpMismatch}`);
           refreshRuntimeSafeCommands();
           if (isEnabled) {
             restartPolling();
           }
+          postControlPanelState();
         }
       })
     );
     if (isEnabled) {
       await startPolling();
     }
-    setTimeout(() => {
-      maybePromptFirstRunSetup(context).catch((err) => {
-        log(`[Setup] Prompt failed: ${err.message}`);
-      });
-    }, 1500);
+    log("Startup setup prompts are disabled; use Control Panel -> Save IDE Launcher.");
     log("Antigravity Auto Accept: Activation complete");
   } catch (error) {
     console.error("CRITICAL ACTIVATION ERROR:", error);
@@ -4598,6 +5335,7 @@ async function handleToggle(context) {
       log("Auto Accept: DISABLED");
       await stopPolling();
     }
+    postControlPanelState();
     log("=== Toggle completed ===");
   } catch (e) {
     log(`Toggle failed: ${e.message}`);
@@ -4610,9 +5348,9 @@ async function handleBackgroundToggle(context) {
   }
   lastBackgroundToggleTs = now;
   log("Background toggle clicked");
-  const cdpAvailable = cdpHandler ? await cdpHandler.isCDPAvailable() : false;
+  const cdpAvailable = cdpHandler ? await cdpHandler.isCDPAvailable(cdpPort, CDP_SCAN_RANGE) : false;
   if (!backgroundModeEnabled && !cdpAvailable) {
-    vscode.window.showWarningMessage(`Background mode requires CDP on port ${CDP_PORT}. Run: Antigravity Auto Accept: Setup CDP`);
+    vscode.window.showWarningMessage(`Background mode requires CDP on port ${cdpPort}. Run: Antigravity Auto Accept: Setup CDP`);
     return;
   }
   backgroundModeEnabled = !backgroundModeEnabled;
@@ -4622,33 +5360,27 @@ async function handleBackgroundToggle(context) {
     await restartPolling();
   }
   updateStatusBar();
+  postControlPanelState();
 }
 async function handleSetupCDP() {
-  const autoResult = await createAndRunAutomaticCdpSetup();
-  if (autoResult.ok) {
-    if (autoResult.alreadyReady || autoResult.restarted) {
-      await globalContext.globalState.update(FIRST_RUN_SETUP_DONE_KEY, true);
-      vscode.window.showInformationMessage(`CDP setup completed. Desktop shortcut: ${autoResult.shortcutPath}`);
-    } else {
-      vscode.window.showWarningMessage(
-        buildManualRestartNote(resolveEditorExecutable(currentIDE), autoResult.shortcutPath, CDP_PORT),
-        { modal: true },
-        "OK"
-      );
+  const result = await saveLauncherForPort(cdpPort);
+  if (!result.ok) {
+    if (!result.canceled) {
+      vscode.window.showErrorMessage(`Save launcher failed: ${result.error}`);
     }
+    postControlPanelState();
     return;
   }
-  const ide = (currentIDE || "").toLowerCase();
-  let script = "";
-  if (process.platform === "win32") {
-    script = ide === "antigravity" ? `$exe = "$env:LOCALAPPDATA\\Programs\\Antigravity\\Antigravity.exe"; Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue; Stop-Process -Name Antigravity -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=${CDP_PORT}' } else { Write-Host 'Antigravity executable not found:' $exe }` : `$exe = "$env:LOCALAPPDATA\\Programs\\cursor\\Cursor.exe"; Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction SilentlyContinue; Stop-Process -Name Cursor -ErrorAction SilentlyContinue; Start-Sleep -Seconds 1; if (Test-Path $exe) { Start-Process $exe -ArgumentList '--remote-debugging-port=${CDP_PORT}' } else { Write-Host 'Cursor executable not found:' $exe }`;
-  } else if (process.platform === "darwin") {
-    script = ide === "antigravity" ? `pkill Antigravity 2>/dev/null; sleep 2; open -n -a Antigravity --args --remote-debugging-port=${CDP_PORT}` : `pkill Cursor 2>/dev/null; sleep 2; open -n -a Cursor --args --remote-debugging-port=${CDP_PORT}`;
-  } else {
-    script = ide === "antigravity" ? `pkill antigravity 2>/dev/null; sleep 2; antigravity --remote-debugging-port=${CDP_PORT} &` : `pkill cursor 2>/dev/null; sleep 2; cursor --remote-debugging-port=${CDP_PORT} &`;
+  const infoText = `Launcher saved at:
+${result.path}
+
+How to open:
+${result.instructions}`;
+  const infoAction = await vscode.window.showInformationMessage(infoText, { modal: true }, "Copy Steps");
+  if (infoAction === "Copy Steps") {
+    await vscode.env.clipboard.writeText(result.instructions);
   }
-  await vscode.env.clipboard.writeText(script);
-  vscode.window.showWarningMessage(`Automatic setup failed: ${autoResult.error}. A manual setup command was copied to your clipboard.`);
+  postControlPanelState();
 }
 async function startPolling() {
   if (pollTimer)
@@ -4661,8 +5393,14 @@ async function startPolling() {
     ide: currentIDE,
     bannedCommands,
     pollInterval: pollFrequency,
+    cdpPort,
+    cdpPortRange: CDP_SCAN_RANGE,
     quiet
   });
+  const currentStatus = await detectCdpRuntimeStatus(cdpPort);
+  markCdpRuntimeStatus(currentStatus);
+  maybeNotifyCdpMismatch(currentStatus);
+  updateStatusBar();
   if (cdpHandler) {
     try {
       await cdpHandler.start(getCdpConfig(false));
@@ -4683,7 +5421,7 @@ async function startPolling() {
   if ((currentIDE || "").toLowerCase() === "antigravity") {
     const cdpConnected = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
     if (!cdpConnected) {
-      log("CDP not connected. Using native command fallback (accept/run/allow/continue).");
+      log(`CDP not connected on expected port ${cdpPort}.`);
     }
   }
   await executeAcceptCommandsForIDE();
@@ -4694,11 +5432,19 @@ async function startPolling() {
       await refreshAntigravityDiscoveredCommands();
       await executeAcceptCommandsForIDE();
       const now = Date.now();
+      const status = await detectCdpRuntimeStatus(cdpPort);
+      markCdpRuntimeStatus(status);
+      maybeNotifyCdpMismatch(status);
+      updateStatusBar();
+      if (controlPanel && now - lastControlPanelStatePushTs > 2e3) {
+        lastControlPanelStatePushTs = now;
+        postControlPanelState();
+      }
       if (cdpHandler && now - lastStatsLogTs > 5e3) {
         lastStatsLogTs = now;
         try {
           const stats = await cdpHandler.getStats();
-          log(`[CDP] Stats clicks=${stats.clicks || 0} blocked=${stats.blocked || 0} files=${stats.fileEdits || 0} terminals=${stats.terminalCommands || 0}`);
+          log(`[CDP] Stats clicks=${stats.clicks || 0} permissions=${stats.permissions || 0} blocked=${stats.blocked || 0} files=${stats.fileEdits || 0} terminals=${stats.terminalCommands || 0} lastAction=${stats.lastAction || "-"} lastActionLabel="${(stats.lastActionLabel || "").replace(/"/g, "'")}"`);
         } catch (e) {
         }
       }
@@ -4734,12 +5480,20 @@ function updateStatusBar() {
     statusBackgroundItem.backgroundColor = void 0;
     statusBackgroundItem.color = void 0;
   }
+  if (statusControlPanelItem) {
+    statusControlPanelItem.backgroundColor = void 0;
+    statusControlPanelItem.color = void 0;
+  }
   if (isEnabled) {
     let statusText = "ON";
     let icon = "$(check)";
     let tooltip = `Antigravity Auto Accept is active (${pollFrequency}ms)`;
     const cdpConnected = cdpHandler && cdpHandler.getConnectionCount() > 0;
-    if (cdpConnected) {
+    if ((currentIDE || "").toLowerCase() === "antigravity" && pauseOnCdpMismatch && cdpRuntimeStatus && cdpRuntimeStatus.state !== "ok" && cdpRuntimeStatus.state !== "mcp_only") {
+      statusText = "PAUSED";
+      icon = "$(warning)";
+      tooltip = `${cdpRuntimeStatus.message} Open Control Panel to fix.`;
+    } else if (cdpConnected) {
       tooltip += " | CDP connected";
     } else if ((currentIDE || "").toLowerCase() === "antigravity") {
       tooltip += " | CDP disconnected";
@@ -4747,6 +5501,12 @@ function updateStatusBar() {
     statusBarItem.text = `${icon} Auto Accept: ${statusText}`;
     statusBarItem.tooltip = tooltip;
     statusBarItem.backgroundColor = void 0;
+    if (statusControlPanelItem) {
+      const panelIcon = statusText === "PAUSED" ? "$(warning)" : "$(tools)";
+      statusControlPanelItem.text = `${panelIcon} Auto Accept Panel`;
+      statusControlPanelItem.tooltip = "Open Antigravity Auto Accept Control Panel";
+      statusControlPanelItem.show();
+    }
     if (statusBackgroundItem) {
       if (backgroundModeEnabled) {
         statusBackgroundItem.text = "$(sync~spin) Background: ON";
@@ -4761,12 +5521,24 @@ function updateStatusBar() {
     statusBarItem.text = "$(circle-slash) Auto Accept: OFF";
     statusBarItem.tooltip = "Click to enable Antigravity Auto Accept";
     statusBarItem.backgroundColor = new vscode.ThemeColor("statusBarItem.warningBackground");
+    if (statusControlPanelItem) {
+      statusControlPanelItem.text = "$(tools) Auto Accept Panel";
+      statusControlPanelItem.tooltip = "Open Antigravity Auto Accept Control Panel";
+      statusControlPanelItem.show();
+    }
     if (statusBackgroundItem) {
       statusBackgroundItem.hide();
     }
   }
 }
 function deactivate() {
+  if (controlPanel) {
+    try {
+      controlPanel.dispose();
+    } catch (e) {
+    }
+    controlPanel = null;
+  }
   if (runtimeCommandRefreshTimer) {
     clearInterval(runtimeCommandRefreshTimer);
     runtimeCommandRefreshTimer = null;
