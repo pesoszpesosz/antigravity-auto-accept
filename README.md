@@ -1,14 +1,38 @@
 # Antigravity Auto Accept
 
-This extension is free. I have spent a lot of time building it, maintaining it, and fixing it again after upstream changes and updates. If it saves you time, please take a minute to rate it on Open VSX:
+This extension is free. I have spent a lot of time building it, maintaining it, and fixing it again after upstream changes and updates. If it saves you time, please take a minute to rate it on Open VSX and leave feedback or issues on GitHub:
 
 https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
+https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 That helps a lot.
 
 ![Antigravity Auto Accept Control Panel](./media/control-panel.png)
 
 Antigravity Auto Accept removes repetitive approval clicks in Antigravity and gives you a clear control panel for CDP status, launcher generation, and runtime control.
+
+## Open The Control Panel First
+
+This should be the first thing users look for after installation.
+
+Where to find it:
+
+- look at the bottom-right status area of the IDE
+- on Antigravity, this is on the right side below the chat area
+- find the status item with the tools icon and label `Auto Accept Panel`
+- click it to open the control panel
+
+You can also open it from the command palette:
+
+- `Antigravity Auto Accept: Open Control Panel`
+
+What users should do there:
+
+1. confirm the expected CDP port
+2. save the port if they want a different one
+3. click `Save IDE Launcher...`
+4. save the launcher wherever they want
+5. always open Antigravity through that launcher when they want that CDP port
 
 ## What It Does
 
@@ -100,7 +124,7 @@ Windows has been verified end-to-end in the current fix cycle. The macOS and Lin
 ## Quick Start
 
 1. Install the extension from Open VSX or from a VSIX.
-2. Open `Antigravity Auto Accept: Open Control Panel`.
+2. Open the bottom-right `Auto Accept Panel` status item.
 3. Set the CDP port you want.
 4. Click `Save IDE Launcher...`.
 5. Save the launcher wherever you want on your machine.

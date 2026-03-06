@@ -11,12 +11,18 @@
 ## 2) Recommended Workflow
 
 1. Install the extension.
-2. Open `Antigravity Auto Accept: Open Control Panel`.
+2. Open the `Auto Accept Panel` status item in the bottom-right corner of the IDE.
 3. Set the CDP port you want.
 4. Click `Save IDE Launcher...`.
 5. Save the launcher file where you want it.
 6. Open Antigravity through that saved launcher.
 7. Turn on `Auto Accept`.
+
+Where users should look:
+
+- right side of the bottom status area
+- below the chat area
+- tools icon with the label `Auto Accept Panel`
 
 ## 3) What The Control Panel Shows
 
@@ -118,6 +124,10 @@ Follow those steps exactly.
 Extension page:
 
 https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
+
+Feedback is also useful on GitHub issues:
+
+https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 
 

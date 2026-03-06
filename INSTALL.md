@@ -24,6 +24,12 @@ Use one of these:
 - click the bottom-right status item `Auto Accept Panel`
 - run `Antigravity Auto Accept: Open Control Panel`
 
+Where to look:
+
+- bottom-right side of the IDE
+- beneath the chat area
+- tools icon plus the label `Auto Accept Panel`
+
 ## 3) Configure CDP
 
 1. Choose the CDP port you want.
@@ -46,6 +52,8 @@ The panel also shows:
 - the saved launcher path
 - exact step-by-step open instructions
 - a manual fallback command
+
+This is the intended workflow now. Users should start from the control panel first, not from an old popup flow.
 
 ## 5) Turn It On
 
