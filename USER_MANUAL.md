@@ -13,10 +13,11 @@
 1. Install the extension.
 2. Open the `Auto Accept Panel` status item in the bottom-right corner of the IDE.
 3. Set the CDP port you want.
-4. Click `Save IDE Launcher...`.
-5. Save the launcher file where you want it.
-6. Open Antigravity through that saved launcher.
-7. Turn on `Auto Accept`.
+4. If Antigravity is not installed in a default location, click `Choose IDE Path...` and select the real executable.
+5. Click `Save IDE Launcher...`.
+6. Save the launcher file where you want it.
+7. Open Antigravity through that saved launcher.
+8. Turn on `Auto Accept`.
 
 Where users should look:
 
@@ -118,6 +119,14 @@ The panel already prints:
 - exact open steps
 
 Follow those steps exactly.
+
+### Antigravity is installed in a custom folder
+
+Use the control panel button:
+
+- `Choose IDE Path...`
+
+Then select the real Antigravity executable and save the launcher again.
 
 ## 8) Open VSX
 

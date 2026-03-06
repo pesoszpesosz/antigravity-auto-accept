@@ -2,7 +2,7 @@
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity Auto Accept",
   "description": "Automatically accepts Antigravity agent approval prompts with optional CDP-assisted setup.",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "publisher": "pesosz",
   "license": "MIT",
   "icon": "media/icon.png",
@@ -75,6 +75,16 @@
           "type": "boolean",
           "default": true,
           "description": "Show a warning and pause action flow when configured CDP port is not active"
+        },
+        "autoAcceptFree.antigravityExecutablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to the Antigravity executable or app bundle when it is not installed in a default location"
+        },
+        "autoAcceptFree.cursorExecutablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional absolute path to the Cursor executable or app bundle when it is not installed in a default location"
         },
         "autoAcceptFree.pollInterval": {
           "type": "number",

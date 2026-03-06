@@ -2,6 +2,17 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.0.9] - 2026-03-06
+
+### Added
+- A persisted manual executable path override for Antigravity and Cursor.
+- Control panel actions to choose or clear the IDE executable path.
+
+### Fixed
+- Launcher generation now supports non-default install locations instead of only standard paths.
+- Windows manual executable overrides now win over stale desktop shortcut templates.
+- The control panel now exposes the executable path state so users can see whether launch is using auto-detect or a manual override.
+
 ## [1.0.8] - 2026-03-06
 
 ### Changed

@@ -31,6 +31,8 @@ let cdpPort = 9000;
 let savedLauncherPath = '';
 let savedLauncherPort = 0;
 let pauseOnCdpMismatch = true;
+let antigravityExecutablePath = '';
+let cursorExecutablePath = '';
 let lastCdpMismatchNotificationTs = 0;
 let lastControlPanelStatePushTs = 0;
 let cdpRuntimeStatus = {
@@ -55,6 +57,8 @@ const FIRST_RUN_SETUP_DONE_KEY = 'auto-accept-free-first-run-setup-done-v2';
 const SETUP_PROMPT_SNOOZE_UNTIL_KEY = 'auto-accept-free-setup-prompt-snooze-until-v1';
 const SAVED_LAUNCHER_PATH_KEY = 'auto-accept-free-saved-launcher-path-v1';
 const SAVED_LAUNCHER_PORT_KEY = 'auto-accept-free-saved-launcher-port-v1';
+const ANTIGRAVITY_EXECUTABLE_PATH_KEY = 'antigravityExecutablePath';
+const CURSOR_EXECUTABLE_PATH_KEY = 'cursorExecutablePath';
 const CDP_MISMATCH_NOTIFY_COOLDOWN_MS = 30000;
 const LAUNCH_VERIFY_TIMEOUT_MS = 15000;
 const SETUP_PROMPT_SNOOZE_MS = 6 * 60 * 60 * 1000;
@@ -542,6 +546,177 @@ function maybeNotifyCdpMismatch(status) {
     vscode.window.showWarningMessage(`Auto Accept paused: ${status.message} Open "Antigravity Auto Accept: Open Control Panel" to fix.`);
 }
 
+function normalizeExecutablePath(value) {
+    return String(value || '').trim();
+}
+
+function getExecutablePathConfigKey(ideName) {
+    const ide = String(ideName || '').toLowerCase();
+    if (ide === 'antigravity') return ANTIGRAVITY_EXECUTABLE_PATH_KEY;
+    if (ide === 'cursor') return CURSOR_EXECUTABLE_PATH_KEY;
+    return '';
+}
+
+function getConfiguredExecutablePath(ideName) {
+    const key = getExecutablePathConfigKey(ideName);
+    if (key === ANTIGRAVITY_EXECUTABLE_PATH_KEY) {
+        return antigravityExecutablePath;
+    }
+    if (key === CURSOR_EXECUTABLE_PATH_KEY) {
+        return cursorExecutablePath;
+    }
+    return '';
+}
+
+function setConfiguredExecutablePath(ideName, nextPath) {
+    const normalized = normalizeExecutablePath(nextPath);
+    const key = getExecutablePathConfigKey(ideName);
+    if (key === ANTIGRAVITY_EXECUTABLE_PATH_KEY) {
+        antigravityExecutablePath = normalized;
+    } else if (key === CURSOR_EXECUTABLE_PATH_KEY) {
+        cursorExecutablePath = normalized;
+    }
+}
+
+function validateConfiguredExecutablePath(exeInfo, candidatePath = '') {
+    const configuredPath = normalizeExecutablePath(candidatePath || exeInfo?.configuredPath || getConfiguredExecutablePath(exeInfo?.ide));
+    if (!configuredPath) {
+        return {
+            hasOverride: false,
+            valid: true,
+            path: '',
+            error: ''
+        };
+    }
+
+    let stat = null;
+    try {
+        stat = fs.statSync(configuredPath);
+    } catch (err) {
+        return {
+            hasOverride: true,
+            valid: false,
+            path: configuredPath,
+            error: `Configured ${exeInfo?.appName || 'IDE'} path does not exist: ${configuredPath}`
+        };
+    }
+
+    if (process.platform === 'win32') {
+        if (!stat.isFile() || path.extname(configuredPath).toLowerCase() !== '.exe') {
+            return {
+                hasOverride: true,
+                valid: false,
+                path: configuredPath,
+                error: `Configured ${exeInfo?.appName || 'IDE'} path must point to an existing .exe file: ${configuredPath}`
+            };
+        }
+    } else if (process.platform === 'darwin') {
+        const isAppBundle = stat.isDirectory() && /\.app$/i.test(configuredPath);
+        if (!(stat.isFile() || isAppBundle)) {
+            return {
+                hasOverride: true,
+                valid: false,
+                path: configuredPath,
+                error: `Configured ${exeInfo?.appName || 'IDE'} path must point to an existing app bundle or executable: ${configuredPath}`
+            };
+        }
+    } else if (!stat.isFile()) {
+        return {
+            hasOverride: true,
+            valid: false,
+            path: configuredPath,
+            error: `Configured ${exeInfo?.appName || 'IDE'} path must point to an existing executable file: ${configuredPath}`
+        };
+    }
+
+    return {
+        hasOverride: true,
+        valid: true,
+        path: configuredPath,
+        error: ''
+    };
+}
+
+function resolveDefaultWindowsExecutable(exeInfo) {
+    if (!exeInfo) return '';
+    const candidates = Array.isArray(exeInfo.exeCandidates) && exeInfo.exeCandidates.length > 0
+        ? exeInfo.exeCandidates
+        : [exeInfo.exePath];
+    for (const exePath of candidates) {
+        if (exePath && fs.existsSync(exePath)) {
+            return exePath;
+        }
+    }
+    return '';
+}
+
+function getExecutablePreferenceState(exeInfo) {
+    if (!exeInfo) {
+        return {
+            configuredPath: '',
+            displayPath: '-',
+            source: 'unavailable',
+            hasOverride: false,
+            valid: false,
+            message: 'Executable path controls are not available for this IDE.'
+        };
+    }
+
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride) {
+        return {
+            configuredPath: configured.path,
+            displayPath: configured.path,
+            source: 'manual',
+            hasOverride: true,
+            valid: configured.valid,
+            message: configured.valid
+                ? `Using manual ${exeInfo.appName} path override.`
+                : configured.error
+        };
+    }
+
+    if (process.platform === 'win32') {
+        const detectedPath = resolveDefaultWindowsExecutable(exeInfo);
+        return {
+            configuredPath: '',
+            displayPath: detectedPath || (exeInfo.exeCandidates || []).join('\n'),
+            source: 'auto',
+            hasOverride: false,
+            valid: !!detectedPath,
+            message: detectedPath
+                ? `Auto-detected ${exeInfo.appName} at ${detectedPath}.`
+                : `${exeInfo.appName} was not found in default locations. Choose the executable path manually.`
+        };
+    }
+
+    if (process.platform === 'darwin') {
+        const appName = exeInfo.macAppName || exeInfo.appName || 'Antigravity';
+        return {
+            configuredPath: '',
+            displayPath: appName,
+            source: 'auto',
+            hasOverride: false,
+            valid: true,
+            message: `Auto-launch uses macOS app name "${appName}". Choose a manual app or binary path only if needed.`
+        };
+    }
+
+    const commandName = exeInfo.linuxCommand || exeInfo.appName || 'antigravity';
+    return {
+        configuredPath: '',
+        displayPath: commandName,
+        source: 'auto',
+        hasOverride: false,
+        valid: true,
+        message: `Auto-launch uses command "${commandName}" from PATH. Choose a manual executable path only if needed.`
+    };
+}
+
+function escapeSingleQuotedPowerShellString(input) {
+    return `'${escapePowerShellSingleQuoted(input)}'`;
+}
+
 function resolveEditorExecutable(ideName) {
     const ide = String(ideName || '').toLowerCase();
     if (ide === 'antigravity') {
@@ -558,6 +733,8 @@ function resolveEditorExecutable(ideName) {
                 path.join(programFiles, 'Antigravity', 'Antigravity.exe'),
                 path.join(programFilesX86, 'Antigravity', 'Antigravity.exe')
             ],
+            configuredPath: getConfiguredExecutablePath('antigravity'),
+            configKey: ANTIGRAVITY_EXECUTABLE_PATH_KEY,
             processName: 'Antigravity.exe',
             macAppName: 'Antigravity',
             linuxCommand: 'antigravity'
@@ -578,6 +755,8 @@ function resolveEditorExecutable(ideName) {
                 path.join(programFiles, 'Cursor', 'Cursor.exe'),
                 path.join(programFilesX86, 'Cursor', 'Cursor.exe')
             ],
+            configuredPath: getConfiguredExecutablePath('cursor'),
+            configKey: CURSOR_EXECUTABLE_PATH_KEY,
             processName: 'Cursor.exe',
             macAppName: 'Cursor',
             linuxCommand: 'cursor'
@@ -774,15 +953,11 @@ function getWindowsRelaunchArgs(exeInfo) {
 
 function resolveExistingWindowsExecutable(exeInfo) {
     if (!exeInfo) return '';
-    const candidates = Array.isArray(exeInfo.exeCandidates) && exeInfo.exeCandidates.length > 0
-        ? exeInfo.exeCandidates
-        : [exeInfo.exePath];
-    for (const exePath of candidates) {
-        if (exePath && fs.existsSync(exePath)) {
-            return exePath;
-        }
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride) {
+        return configured.valid ? configured.path : '';
     }
-    return '';
+    return resolveDefaultWindowsExecutable(exeInfo);
 }
 
 function buildManualRestartNote(exeInfo, shortcutPath, port = cdpPort) {
@@ -853,23 +1028,40 @@ function writePosixCdpLauncher(exeInfo, port = cdpPort) {
         ? `Start ${appLabel} (CDP ${port}).command`
         : `Start ${appLabel} (CDP ${port}).sh`;
     const launcherPath = path.join(launcherDir, launcherName);
+    const configured = validateConfiguredExecutablePath(exeInfo);
     const commandName = isMac ? '' : (exeInfo.linuxCommand || 'antigravity');
     const appName = exeInfo.macAppName || exeInfo.appName;
 
     const launcherLines = isMac
-        ? [
-            '#!/bin/sh',
-            'set -eu',
-            `open -n -a ${quoteShArg(appName)} --args --remote-debugging-port=${port}`
-        ]
+        ? (configured.valid && configured.path
+            ? (/\.app$/i.test(configured.path)
+                ? [
+                    '#!/bin/sh',
+                    'set -eu',
+                    `open -n ${quoteShArg(configured.path)} --args --remote-debugging-port=${port}`
+                ]
+                : [
+                    '#!/bin/sh',
+                    'set -eu',
+                    `nohup ${quoteShArg(configured.path)} --remote-debugging-port=${port} >/dev/null 2>&1 &`
+                ])
+            : [
+                '#!/bin/sh',
+                'set -eu',
+                `open -n -a ${quoteShArg(appName)} --args --remote-debugging-port=${port}`
+            ])
         : [
             '#!/usr/bin/env sh',
             'set -eu',
-            `if ! command -v ${quoteShArg(commandName)} >/dev/null 2>&1; then`,
-            `  echo "Command '${commandName}' not found in PATH." >&2`,
-            '  exit 1',
-            'fi',
-            `nohup ${quoteShArg(commandName)} --remote-debugging-port=${port} >/dev/null 2>&1 &`
+            ...(configured.valid && configured.path
+                ? [`nohup ${quoteShArg(configured.path)} --remote-debugging-port=${port} >/dev/null 2>&1 &`]
+                : [
+                    `if ! command -v ${quoteShArg(commandName)} >/dev/null 2>&1; then`,
+                    `  echo "Command '${commandName}' not found in PATH." >&2`,
+                    '  exit 1',
+                    'fi',
+                    `nohup ${quoteShArg(commandName)} --remote-debugging-port=${port} >/dev/null 2>&1 &`
+                ])
         ];
 
     fs.writeFileSync(launcherPath, `${launcherLines.join('\n')}\n`, 'utf8');
@@ -993,6 +1185,10 @@ async function launchIDEWithPort(port = cdpPort, options = {}) {
     if (!exeInfo) {
         return { ok: false, error: `Launch is not available for ${currentIDE}.` };
     }
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride && !configured.valid) {
+        return { ok: false, error: configured.error };
+    }
 
     if (ide === 'antigravity') {
         const mcpInfo = await detectAntigravityMcpEndpoint();
@@ -1082,15 +1278,32 @@ async function launchIDEWithPort(port = cdpPort, options = {}) {
 function buildManualLaunchCommand(port = cdpPort) {
     const expectedPort = normalizeCdpPort(port, cdpPort);
     const ide = (currentIDE || '').toLowerCase();
+    const exeInfo = resolveEditorExecutable(currentIDE);
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride && !configured.valid) {
+        return configured.error;
+    }
     if (process.platform === 'win32') {
+        if (configured.valid && configured.path) {
+            return `Start-Process ${escapeSingleQuotedPowerShellString(configured.path)} -ArgumentList '--remote-debugging-port=${expectedPort}'`;
+        }
         return ide === 'antigravity'
             ? `$exeCandidates = @(\"$env:LOCALAPPDATA\\Programs\\Antigravity\\Antigravity.exe\", \"$env:ProgramFiles\\Antigravity\\Antigravity.exe\", \"$env:ProgramFiles(x86)\\Antigravity\\Antigravity.exe\"); $exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { Write-Host 'Antigravity executable not found'; exit 1 }; Start-Process $exe -ArgumentList '--remote-debugging-port=${expectedPort}'`
             : `$exeCandidates = @(\"$env:LOCALAPPDATA\\Programs\\cursor\\Cursor.exe\", \"$env:ProgramFiles\\Cursor\\Cursor.exe\", \"$env:ProgramFiles(x86)\\Cursor\\Cursor.exe\"); $exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1; if (-not $exe) { Write-Host 'Cursor executable not found'; exit 1 }; Start-Process $exe -ArgumentList '--remote-debugging-port=${expectedPort}'`;
     }
     if (process.platform === 'darwin') {
+        if (configured.valid && configured.path) {
+            if (/\.app$/i.test(configured.path)) {
+                return `open -n ${quoteShArg(configured.path)} --args --remote-debugging-port=${expectedPort}`;
+            }
+            return `${quoteShArg(configured.path)} --remote-debugging-port=${expectedPort}`;
+        }
         return ide === 'antigravity'
             ? `open -n -a Antigravity --args --remote-debugging-port=${expectedPort}`
             : `open -n -a Cursor --args --remote-debugging-port=${expectedPort}`;
+    }
+    if (configured.valid && configured.path) {
+        return `${quoteShArg(configured.path)} --remote-debugging-port=${expectedPort} >/dev/null 2>&1 &`;
     }
     return ide === 'antigravity'
         ? `antigravity --remote-debugging-port=${expectedPort} >/dev/null 2>&1 &`
@@ -1124,17 +1337,46 @@ function getDefaultLauncherFileName(exeInfo, port = cdpPort) {
 
 function buildPortableLauncherScript(exeInfo, port = cdpPort) {
     const expectedPort = normalizeCdpPort(port, cdpPort);
+    const configured = validateConfiguredExecutablePath(exeInfo);
 
     if (process.platform === 'win32') {
         return '';
     }
 
     if (process.platform === 'darwin') {
+        if (configured.hasOverride && !configured.valid) {
+            return '';
+        }
+        if (configured.valid && configured.path) {
+            if (/\.app$/i.test(configured.path)) {
+                return [
+                    '#!/bin/sh',
+                    'set -eu',
+                    `open -n ${quoteShArg(configured.path)} --args --remote-debugging-port=${expectedPort} "$@"`
+                ].join('\n') + '\n';
+            }
+            return [
+                '#!/bin/sh',
+                'set -eu',
+                `nohup ${quoteShArg(configured.path)} --remote-debugging-port=${expectedPort} "$@" >/dev/null 2>&1 &`
+            ].join('\n') + '\n';
+        }
         const appName = exeInfo?.macAppName || exeInfo?.appName || 'Antigravity';
         return [
             '#!/bin/sh',
             'set -eu',
             `open -n -a ${quoteShArg(appName)} --args --remote-debugging-port=${expectedPort} "$@"`
+        ].join('\n') + '\n';
+    }
+
+    if (configured.hasOverride && !configured.valid) {
+        return '';
+    }
+    if (configured.valid && configured.path) {
+        return [
+            '#!/usr/bin/env sh',
+            'set -eu',
+            `nohup ${quoteShArg(configured.path)} --remote-debugging-port=${expectedPort} "$@" >/dev/null 2>&1 &`
         ].join('\n') + '\n';
     }
 
@@ -1225,7 +1467,13 @@ function findExistingWindowsShortcutTemplate(exeInfo, port = cdpPort) {
 function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
     const expectedPort = normalizeCdpPort(port, cdpPort);
     const template = findExistingWindowsShortcutTemplate(exeInfo, expectedPort);
-    if (template?.path && path.resolve(template.path) !== path.resolve(shortcutPath)) {
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    const canReuseTemplate = !!(
+        template?.path &&
+        path.resolve(template.path) !== path.resolve(shortcutPath) &&
+        (!configured.hasOverride || (configured.valid && template?.details?.TargetPath && path.resolve(template.details.TargetPath) === path.resolve(configured.path)))
+    );
+    if (canReuseTemplate) {
         fs.copyFileSync(template.path, shortcutPath);
         if (fs.existsSync(shortcutPath)) {
             return {
@@ -1236,8 +1484,13 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
             };
         }
     }
-    const resolvedExePath = template?.details?.TargetPath || resolveExistingWindowsExecutable(exeInfo);
+    const resolvedExePath = configured.valid && configured.path
+        ? configured.path
+        : template?.details?.TargetPath || resolveExistingWindowsExecutable(exeInfo);
     if (!resolvedExePath) {
+        if (configured.hasOverride && !configured.valid) {
+            throw new Error(configured.error);
+        }
         const candidates = Array.isArray(exeInfo?.exeCandidates) && exeInfo.exeCandidates.length > 0
             ? exeInfo.exeCandidates.filter(Boolean)
             : [exeInfo?.exePath].filter(Boolean);
@@ -1282,6 +1535,61 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort) {
     };
 }
 
+async function chooseExecutablePathForCurrentIDE() {
+    const exeInfo = resolveEditorExecutable(currentIDE);
+    if (!exeInfo) {
+        return { ok: false, error: `Executable path override is not available for ${currentIDE}.` };
+    }
+
+    const configuredPath = normalizeExecutablePath(getConfiguredExecutablePath(exeInfo.ide));
+    const defaultFsPath = configuredPath || (process.platform === 'win32' ? exeInfo.exePath : os.homedir());
+    const canSelectFolders = process.platform === 'darwin';
+    const filters = process.platform === 'win32'
+        ? { Executable: ['exe'] }
+        : undefined;
+    const uris = await vscode.window.showOpenDialog({
+        canSelectMany: false,
+        canSelectFiles: true,
+        canSelectFolders,
+        openLabel: 'Use This Path',
+        title: `Select ${exeInfo.appName} ${process.platform === 'darwin' ? 'app or executable' : 'executable'}`,
+        defaultUri: vscode.Uri.file(defaultFsPath),
+        filters
+    });
+
+    if (!uris || uris.length === 0) {
+        return { ok: false, canceled: true };
+    }
+
+    const selectedPath = uris[0].fsPath;
+    const validation = validateConfiguredExecutablePath(exeInfo, selectedPath);
+    if (!validation.valid) {
+        return { ok: false, error: validation.error };
+    }
+
+    await vscode.workspace.getConfiguration('autoAcceptFree').update(exeInfo.configKey, selectedPath, vscode.ConfigurationTarget.Global);
+    setConfiguredExecutablePath(exeInfo.ide, selectedPath);
+    return {
+        ok: true,
+        path: selectedPath,
+        appName: exeInfo.appName
+    };
+}
+
+async function clearExecutablePathForCurrentIDE() {
+    const exeInfo = resolveEditorExecutable(currentIDE);
+    if (!exeInfo) {
+        return { ok: false, error: `Executable path override is not available for ${currentIDE}.` };
+    }
+
+    await vscode.workspace.getConfiguration('autoAcceptFree').update(exeInfo.configKey, '', vscode.ConfigurationTarget.Global);
+    setConfiguredExecutablePath(exeInfo.ide, '');
+    return {
+        ok: true,
+        appName: exeInfo.appName
+    };
+}
+
 function buildLauncherManualSteps(savedPath, port = cdpPort) {
     if (!savedPath) {
         return 'No launcher saved yet.';
@@ -1322,6 +1630,10 @@ async function saveLauncherForPort(port = cdpPort) {
     const exeInfo = resolveEditorExecutable(currentIDE);
     if (!exeInfo) {
         return { ok: false, error: `Launcher creation is not available for ${currentIDE}.` };
+    }
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride && !configured.valid) {
+        return { ok: false, error: configured.error };
     }
 
     const ext = getLauncherFileExtension();
@@ -1377,6 +1689,10 @@ async function createAndRunAutomaticCdpSetup(port = cdpPort) {
     const exeInfo = resolveEditorExecutable(currentIDE);
     if (!exeInfo) {
         return { ok: false, error: `Automatic setup is not available for ${currentIDE}.` };
+    }
+    const configured = validateConfiguredExecutablePath(exeInfo);
+    if (configured.hasOverride && !configured.valid) {
+        return { ok: false, error: configured.error };
     }
 
     if ((currentIDE || '').toLowerCase() === 'antigravity') {
@@ -1618,6 +1934,16 @@ function getControlPanelHtml() {
     </div>
 
     <div class="card">
+      <div class="k">Executable Path Override</div>
+      <pre id="executablePath">-</pre>
+      <div class="muted" id="executablePathMeta" style="margin-top:6px;">Auto-detect status: -</div>
+      <div class="row" style="margin-top:10px;">
+        <button id="chooseExecutable">Choose IDE Path...</button>
+        <button class="warn" id="clearExecutable">Clear Manual Path</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="row">
         <button class="primary" id="toggleAuto">Toggle Auto Accept</button>
         <button id="toggleBg">Toggle Background Mode</button>
@@ -1669,9 +1995,12 @@ function getControlPanelHtml() {
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
       byId('portInput').value = String(state.cdpPort || '');
       byId('pauseOnMismatch').checked = !!state.pauseOnCdpMismatch;
+      byId('executablePath').textContent = state.executablePath || '-';
+      byId('executablePathMeta').textContent = (state.executablePathSource ? ('Source: ' + state.executablePathSource + ' | ') : '') + (state.executablePathMessage || '-');
+      byId('clearExecutable').disabled = !state.hasExecutableOverride;
 
       const s = state.cdpStatus || {};
-      byId('saveLauncher').disabled = false;
+      byId('saveLauncher').disabled = !!(state.hasExecutableOverride && !state.executablePathValid);
       if (s.state === 'ok') setStatus(s.message || 'CDP is ready.', 'ok');
       else if (s.state === 'connecting') setStatus(s.message || 'CDP is starting.', 'warnc');
       else if (s.state === 'mcp_only') setStatus(s.message || 'MCP mode detected; fixed CDP launcher is not available.', 'warnc');
@@ -1689,6 +2018,8 @@ function getControlPanelHtml() {
     byId('refresh').addEventListener('click', () => post('refresh'));
     byId('savePort').addEventListener('click', () => post('savePort', { port: Number(byId('portInput').value) }));
     byId('saveLauncher').addEventListener('click', () => post('saveLauncher', { port: Number(byId('portInput').value) }));
+    byId('chooseExecutable').addEventListener('click', () => post('chooseExecutable'));
+    byId('clearExecutable').addEventListener('click', () => post('clearExecutable'));
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));
     byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
     byId('pauseOnMismatch').addEventListener('change', (e) => post('setPauseOnMismatch', { value: !!e.target.checked }));
@@ -1706,6 +2037,8 @@ async function buildControlPanelState() {
     const extensionHostKind = getExtensionHostKind(globalContext);
     const launcherPort = normalizeCdpPort(savedLauncherPort || cdpPort, cdpPort);
     const launcherSteps = buildLauncherManualSteps(savedLauncherPath, launcherPort);
+    const exeInfo = resolveEditorExecutable(currentIDE);
+    const executableState = getExecutablePreferenceState(exeInfo);
     return {
         ide: currentIDE,
         platform: process.platform,
@@ -1720,7 +2053,12 @@ async function buildControlPanelState() {
         manualLaunchCommand: buildManualLaunchCommand(cdpPort),
         savedLauncherPath,
         savedLauncherPort: launcherPort,
-        launcherSteps
+        launcherSteps,
+        executablePath: executableState.displayPath,
+        executablePathSource: executableState.source,
+        executablePathMessage: executableState.message,
+        hasExecutableOverride: executableState.hasOverride,
+        executablePathValid: executableState.valid
     };
 }
 
@@ -1773,6 +2111,28 @@ async function openControlPanel(context) {
                     await restartPolling();
                 }
                 vscode.window.showInformationMessage(`CDP port set to ${newPort}.`);
+                await postControlPanelState();
+                return;
+            }
+            if (msg.type === 'chooseExecutable') {
+                const result = await chooseExecutablePathForCurrentIDE();
+                if (!result.ok) {
+                    if (!result.canceled) {
+                        vscode.window.showErrorMessage(`Executable path update failed: ${result.error}`);
+                    }
+                } else {
+                    vscode.window.showInformationMessage(`${result.appName} executable path set to:\n${result.path}`);
+                }
+                await postControlPanelState();
+                return;
+            }
+            if (msg.type === 'clearExecutable') {
+                const result = await clearExecutablePathForCurrentIDE();
+                if (!result.ok) {
+                    vscode.window.showErrorMessage(`Executable path reset failed: ${result.error}`);
+                } else {
+                    vscode.window.showInformationMessage(`${result.appName} executable path override cleared.`);
+                }
                 await postControlPanelState();
                 return;
             }
@@ -1854,6 +2214,8 @@ async function activate(context) {
         pollFrequency = config.get('pollInterval', 500);
         cdpPort = normalizeCdpPort(config.get('cdpPort', DEFAULT_CDP_PORT), DEFAULT_CDP_PORT);
         pauseOnCdpMismatch = !!config.get('pauseOnCdpMismatch', true);
+        antigravityExecutablePath = normalizeExecutablePath(config.get(ANTIGRAVITY_EXECUTABLE_PATH_KEY, ''));
+        cursorExecutablePath = normalizeExecutablePath(config.get(CURSOR_EXECUTABLE_PATH_KEY, ''));
         bannedCommands = config.get('bannedCommands', [
             'rm -rf /',
             'rm -rf ~',
@@ -1885,6 +2247,12 @@ async function activate(context) {
         log(`Poll interval: ${pollFrequency}ms`);
         log(`CDP port: ${cdpPort}`);
         log(`Pause on mismatch: ${pauseOnCdpMismatch}`);
+        if (antigravityExecutablePath) {
+            log(`Antigravity executable override: ${antigravityExecutablePath}`);
+        }
+        if (cursorExecutablePath) {
+            log(`Cursor executable override: ${cursorExecutablePath}`);
+        }
         if (savedLauncherPath) {
             log(`Saved launcher path: ${savedLauncherPath} (port ${savedLauncherPort})`);
         }
@@ -1935,8 +2303,10 @@ async function activate(context) {
                     pollFrequency = newConfig.get('pollInterval', 500);
                     cdpPort = normalizeCdpPort(newConfig.get('cdpPort', DEFAULT_CDP_PORT), DEFAULT_CDP_PORT);
                     pauseOnCdpMismatch = !!newConfig.get('pauseOnCdpMismatch', true);
+                    antigravityExecutablePath = normalizeExecutablePath(newConfig.get(ANTIGRAVITY_EXECUTABLE_PATH_KEY, ''));
+                    cursorExecutablePath = normalizeExecutablePath(newConfig.get(CURSOR_EXECUTABLE_PATH_KEY, ''));
                     bannedCommands = newConfig.get('bannedCommands', []);
-                    log(`Settings updated: ${pollFrequency}ms, cdpPort=${cdpPort}, pauseOnMismatch=${pauseOnCdpMismatch}`);
+                    log(`Settings updated: ${pollFrequency}ms, cdpPort=${cdpPort}, pauseOnMismatch=${pauseOnCdpMismatch}, antigravityPath=${antigravityExecutablePath || '-'}, cursorPath=${cursorExecutablePath || '-'}`);
                     refreshRuntimeSafeCommands();
                     if (isEnabled) {
                         restartPolling();

@@ -15,14 +15,14 @@ Antigravity Auto Accept removes repetitive approval clicks in Antigravity and gi
 
 Current version:
 
-- `1.0.8`
+- `1.0.9`
 
 Download:
 
 - GitHub release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.8
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.0.9
 - VSIX:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.8/antigravity-auto-accept-1.0.8.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.0.9/antigravity-auto-accept-1.0.9.vsix
 
 ## Open The Control Panel First
 
@@ -43,9 +43,10 @@ What users should do there:
 
 1. confirm the expected CDP port
 2. save the port if they want a different one
-3. click `Save IDE Launcher...`
-4. save the launcher wherever they want
-5. always open Antigravity through that launcher when they want that CDP port
+3. if Antigravity is not installed in a default location, click `Choose IDE Path...`
+4. click `Save IDE Launcher...`
+5. save the launcher wherever they want
+6. always open Antigravity through that launcher when they want that CDP port
 
 ## What It Does
 

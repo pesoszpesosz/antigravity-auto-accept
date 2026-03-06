@@ -34,8 +34,9 @@ Where to look:
 
 1. Choose the CDP port you want.
 2. Click `Save Port`.
-3. Click `Save IDE Launcher...`.
-4. Save the launcher anywhere you want.
+3. If Antigravity is not installed in a default location, click `Choose IDE Path...` and select the real executable.
+4. Click `Save IDE Launcher...`.
+5. Save the launcher anywhere you want.
 
 Generated launcher type:
 
