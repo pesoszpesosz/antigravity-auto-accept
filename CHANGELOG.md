@@ -2,6 +2,15 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.1] - 2026-03-08
+
+### Changed
+- Added targeted code comments around the recent launcher and prompt-dedupe fixes to make those paths easier to maintain.
+- Added Ko-fi support text to the install and user-manual docs.
+
+### Fixed
+- Kept the Windows launcher/context and prompt-dedupe behavior from `1.1.0` intact in the packaged `1.1.1` build.
+
 ## [1.1.0] - 2026-03-06
 
 ### Fixed

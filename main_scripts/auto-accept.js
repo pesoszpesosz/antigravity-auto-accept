@@ -577,6 +577,8 @@
         const wasRunPromptApprovedRecently = (signature, now = Date.now()) => {
             if (!signature) return false;
             const state = window.__autoAcceptFreeState || {};
+            // Antigravity can rerender the same prompt several times; suppress duplicate
+            // approvals for the same prompt signature during that short window.
             return state.lastRunPromptSig === signature && (now - Number(state.lastRunPromptApproveAt || 0)) < 15000;
         };
 

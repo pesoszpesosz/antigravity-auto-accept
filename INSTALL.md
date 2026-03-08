@@ -1,5 +1,13 @@
 # Antigravity Auto Accept - Install Guide
 
+## Support
+
+This plugin is free to use. If it saves you time and you want to support ongoing fixes and keep it free, you can buy me a coffee:
+
+https://ko-fi.com/pesosz
+
+Even a very small donation helps.
+
 ## 1) Install
 
 Choose one:

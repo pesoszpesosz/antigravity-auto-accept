@@ -1,5 +1,13 @@
 # Antigravity Auto Accept - User Manual
 
+## Support
+
+This plugin is free to use. If it helps and you want to support maintenance, fixes, and keeping it free, you can buy me a coffee:
+
+https://ko-fi.com/pesosz
+
+Even a very small donation helps.
+
 ## 1) What This Extension Does
 
 - Auto-accepts repetitive Antigravity approval prompts.

@@ -809,6 +809,7 @@ function quoteCmdArg(arg) {
 }
 
 function buildWindowsArgumentString(args = []) {
+    // `.lnk` arguments must be flattened up front; passing arrays here is not enough.
     const normalizedArgs = Array.isArray(args)
         ? args
             .map(arg => String(arg ?? ''))
@@ -1477,6 +1478,8 @@ function createWindowsLauncherShortcut(shortcutPath, exeInfo, port = cdpPort, re
     const expectedPort = normalizeCdpPort(port, cdpPort);
     const template = findExistingWindowsShortcutTemplate(exeInfo, expectedPort);
     const configured = validateConfiguredExecutablePath(exeInfo);
+    // Preserve the current window context when we know it, so reopening through the
+    // saved launcher does not silently drop workspace/profile state.
     const extraArgs = Array.isArray(relaunchArgs)
         ? relaunchArgs.map(arg => String(arg ?? '')).filter(arg => arg.trim().length > 0)
         : [];
@@ -2019,6 +2022,7 @@ function getControlPanelHtml() {
       byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
       renderedPortValue = String(state.cdpPort || '');
+      // Keep the user's in-progress draft while the panel auto-refreshes in the background.
       if (!portInputDirty) {
         byId('portInput').value = renderedPortValue;
       }

@@ -5456,6 +5456,7 @@ function getControlPanelHtml() {
       byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
       renderedPortValue = String(state.cdpPort || '');
+      // Keep the user's in-progress draft while the panel auto-refreshes in the background.
       if (!portInputDirty) {
         byId('portInput').value = renderedPortValue;
       }
