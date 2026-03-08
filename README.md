@@ -1,11 +1,16 @@
 # Antigravity Auto Accept
 
-This extension is free. I have spent a lot of time building it, maintaining it, and fixing it again after upstream changes and updates. If it saves you time, please take a minute to rate it on Open VSX and leave feedback or issues on GitHub:
+This extension is free. I have spent a lot of time building it, maintaining it, and fixing it again after upstream changes and updates. If it saves you time and you want to support the project, you can buy me a coffee:
 
-https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
+[![Buy Me a Coffee](https://storage.ko-fi.com/cdn/kofi3.png?v=3)](https://ko-fi.com/pesosz)
+
+https://ko-fi.com/pesosz
+
+Even a very small coffee donation helps me sustain the plugin, keep spending time on fixes, and keep it free.
+
+If you hit a bug or want to report something, use GitHub issues:
+
 https://github.com/pesoszpesosz/antigravity-auto-accept/issues
-
-That helps a lot.
 
 ![Antigravity Auto Accept Control Panel](./media/control-panel.png)
 
