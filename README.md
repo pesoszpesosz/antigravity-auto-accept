@@ -1,5 +1,18 @@
 # Antigravity Auto Accept
 
+Antigravity Auto Accept is a lightweight extension for auto-accepting Antigravity approval prompts, terminal run confirmations, and common agent continue/allow actions.
+
+It includes a control panel for CDP status, launcher generation, and runtime state so users can configure Antigravity cleanly instead of fighting repeated approval clicks.
+
+Supported workflow today:
+
+- Antigravity approval prompts
+- terminal run approvals
+- CDP launcher setup and control panel flow
+- Antigravity, Cursor, and VS Code environments
+
+## Support
+
 This extension is free. I have spent a lot of time building it, maintaining it, and fixing it again after upstream changes and updates. If it saves you time and you want to support the project, you can buy me a coffee:
 
 [![Buy Me a Coffee](https://storage.ko-fi.com/cdn/kofi3.png?v=3)](https://ko-fi.com/pesosz)
@@ -14,20 +27,18 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 ![Antigravity Auto Accept Control Panel](./media/control-panel.png)
 
-Antigravity Auto Accept removes repetitive approval clicks in Antigravity and gives you a clear control panel for CDP status, launcher generation, and runtime control.
-
 ## Current Release
 
 Current version:
 
-- `1.1.1`
+- `1.1.2`
 
 Download:
 
 - GitHub release page:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/tag/v1.1.1
-- VSIX:
-  https://github.com/pesoszpesosz/antigravity-auto-accept/releases/download/v1.1.1/antigravity-auto-accept-1.1.1.vsix
+  https://github.com/pesoszpesosz/antigravity-auto-accept/releases
+- Open VSX:
+  https://open-vsx.org/extension/pesosz/antigravity-auto-accept/
 
 ## Open The Control Panel First
 

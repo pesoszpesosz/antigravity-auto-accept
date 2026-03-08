@@ -1,14 +1,18 @@
 {
   "name": "antigravity-auto-accept",
   "displayName": "Antigravity Auto Accept",
-  "description": "Automatically accepts Antigravity agent approval prompts with optional CDP-assisted setup.",
-  "version": "1.1.1",
+  "description": "Auto-accept Antigravity approval prompts, terminal run confirmations, and agent actions with a CDP control panel and launcher setup.",
+  "version": "1.1.2",
   "publisher": "pesosz",
   "license": "MIT",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
     "url": "https://github.com/pesoszpesosz/antigravity-auto-accept"
+  },
+  "homepage": "https://github.com/pesoszpesosz/antigravity-auto-accept#readme",
+  "bugs": {
+    "url": "https://github.com/pesoszpesosz/antigravity-auto-accept/issues"
   },
   "categories": [
     "Machine Learning",
@@ -21,7 +25,14 @@
     "ai",
     "auto-accept",
     "copilot",
-    "agent"
+    "agent",
+    "approval",
+    "approvals",
+    "prompt",
+    "terminal",
+    "automation",
+    "cdp",
+    "devtools"
   ],
   "scripts": {
     "compile": "esbuild extension.js --bundle --outfile=dist/extension.js --external:vscode --platform=node --format=cjs",

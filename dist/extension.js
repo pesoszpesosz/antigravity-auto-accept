@@ -4330,6 +4330,21 @@ function getExtensionHostKind(context = globalContext) {
   }
   return "unknown";
 }
+function getExtensionVersion(context = globalContext) {
+  try {
+    const ext = context?.extension || vscode.extensions.getExtension("pesosz.antigravity-auto-accept");
+    return ext?.packageJSON?.version || "unknown";
+  } catch (err) {
+    log(`[Runtime] Failed to detect extension version: ${err.message}`);
+    return "unknown";
+  }
+}
+function logActivationSummary(context = globalContext) {
+  const hostKind = getExtensionHostKind(context);
+  const remoteName = vscode.env.remoteName || "local";
+  const workspaceFolderCount = Array.isArray(vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders.length : 0;
+  log(`[Runtime] Version ${getExtensionVersion(context)} host=${hostKind} remote=${remoteName} workspaceFolders=${workspaceFolderCount}`);
+}
 function getAntigravityLogsRoot() {
   const appData = process.env.APPDATA || "";
   return appData ? path.join(appData, "Antigravity", "logs") : "";
@@ -5705,6 +5720,7 @@ async function activate(context) {
     currentIDE = detectIDE();
     outputChannel = vscode.window.createOutputChannel("Antigravity Auto Accept");
     context.subscriptions.push(outputChannel);
+    logActivationSummary(context);
     log(`Antigravity Auto Accept: Detected ${currentIDE}`);
     log(`Poll interval: ${pollFrequency}ms`);
     log(`CDP port: ${cdpPort}`);

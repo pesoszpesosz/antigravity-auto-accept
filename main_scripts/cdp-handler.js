@@ -3,8 +3,24 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const BASE_PORT = 9000;
-const PORT_RANGE = 3;
+const DEFAULT_BASE_PORT = 9000;
+const DEFAULT_PORT_RANGE = 3;
+
+function normalizePort(value, fallback = DEFAULT_BASE_PORT) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    const port = Math.trunc(num);
+    if (port < 1 || port > 65535) return fallback;
+    return port;
+}
+
+function normalizePortRange(value, fallback = DEFAULT_PORT_RANGE) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return fallback;
+    const range = Math.trunc(num);
+    if (range < 0 || range > 32) return fallback;
+    return range;
+}
 
 // Load auto-accept.js script
 let _autoAcceptScript = null;
@@ -34,14 +50,45 @@ class CDPHandler {
         this.isEnabled = false;
         this.msgId = 1;
         this._lastConfigHash = '';
+        this.basePort = DEFAULT_BASE_PORT;
+        this.portRange = DEFAULT_PORT_RANGE;
     }
 
     log(msg) {
         this.logger(`[CDP] ${msg}`);
     }
 
-    async isCDPAvailable() {
-        for (let port = BASE_PORT - PORT_RANGE; port <= BASE_PORT + PORT_RANGE; port++) {
+    getPortCandidates(basePort = this.basePort, portRange = this.portRange) {
+        const base = normalizePort(basePort, DEFAULT_BASE_PORT);
+        const range = normalizePortRange(portRange, DEFAULT_PORT_RANGE);
+        const ports = [];
+        for (let port = base - range; port <= base + range; port++) {
+            if (port >= 1 && port <= 65535) {
+                ports.push(port);
+            }
+        }
+        return ports;
+    }
+
+    async getAvailablePorts(portCandidates = null) {
+        const candidates = Array.isArray(portCandidates) && portCandidates.length > 0
+            ? [...new Set(portCandidates.map(p => normalizePort(p, 0)).filter(p => p > 0))]
+            : this.getPortCandidates();
+        const available = [];
+        for (const port of candidates) {
+            try {
+                const pages = await this._getPages(port);
+                if (pages.length > 0) {
+                    available.push(port);
+                }
+            } catch (e) { }
+        }
+        return available;
+    }
+
+    async isCDPAvailable(port = this.basePort, portRange = this.portRange) {
+        const candidates = this.getPortCandidates(port, portRange);
+        for (const port of candidates) {
             try {
                 const pages = await this._getPages(port);
                 if (pages.length > 0) return true;
@@ -52,21 +99,37 @@ class CDPHandler {
 
     async start(config) {
         this.isEnabled = true;
+        this.basePort = normalizePort(config?.cdpPort, this.basePort);
+        this.portRange = normalizePortRange(config?.cdpPortRange, this.portRange);
+        const candidates = this.getPortCandidates(this.basePort, this.portRange);
+        const candidateSet = new Set(candidates);
+
+        for (const [id, conn] of Array.from(this.connections.entries())) {
+            const port = Number(String(id).split(':')[0]);
+            if (!candidateSet.has(port)) {
+                try {
+                    conn.ws.close();
+                } catch (e) { }
+                this.connections.delete(id);
+            }
+        }
 
         const quiet = !!config?.quiet;
         const configHash = JSON.stringify({
             b: !!config?.isBackgroundMode,
             i: String(config?.ide || ''),
-            bc: Array.isArray(config?.bannedCommands) ? config.bannedCommands.length : 0
+            bc: Array.isArray(config?.bannedCommands) ? config.bannedCommands.length : 0,
+            p: this.basePort,
+            r: this.portRange
         });
 
         if (!quiet || this._lastConfigHash !== configHash) {
-            this.log(`Scanning ports ${BASE_PORT - PORT_RANGE} to ${BASE_PORT + PORT_RANGE}...`);
+            this.log(`Scanning ports ${candidates[0]} to ${candidates[candidates.length - 1]}...`);
             this.log(`Config: background=${config.isBackgroundMode}, ide=${config.ide}`);
         }
         this._lastConfigHash = configHash;
 
-        for (let port = BASE_PORT - PORT_RANGE; port <= BASE_PORT + PORT_RANGE; port++) {
+        for (const port of candidates) {
             try {
                 const pages = await this._getPages(port);
                 if (pages.length > 0) {
@@ -287,16 +350,21 @@ class CDPHandler {
     }
 
     async getStats() {
-        const stats = { clicks: 0, blocked: 0, fileEdits: 0, terminalCommands: 0 };
+        const stats = { clicks: 0, permissions: 0, blocked: 0, fileEdits: 0, terminalCommands: 0, lastAction: '', lastActionLabel: '' };
         for (const [id] of this.connections) {
             try {
                 const res = await this._evaluate(id, 'JSON.stringify(window.__autoAcceptGetStats ? window.__autoAcceptGetStats() : {})');
                 if (res?.result?.value) {
                     const s = JSON.parse(res.result.value);
                     stats.clicks += s.clicks || 0;
+                    stats.permissions += s.permissions || 0;
                     stats.blocked += s.blocked || 0;
                     stats.fileEdits += s.fileEdits || 0;
                     stats.terminalCommands += s.terminalCommands || 0;
+                    if (s.lastActionLabel) {
+                        stats.lastAction = s.lastAction || '';
+                        stats.lastActionLabel = s.lastActionLabel || '';
+                    }
                 }
             } catch (e) { }
         }

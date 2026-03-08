@@ -2,6 +2,17 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.2] - 2026-03-09
+
+### Changed
+- Refined the extension description, keywords, and marketplace links so the listing is clearer and easier to discover.
+- Reworked the README opening section around approval prompts, terminal approvals, CDP setup, and supported IDE environments.
+- Added a small activation summary log line with version, host kind, remote mode, and workspace count to make support checks easier.
+- Updated the CDP handler to scan around the selected base port instead of a fixed hard-coded range and to expose richer runtime action stats.
+
+### Fixed
+- Removed version-pinned README download links so future marketplace and GitHub release updates are less likely to ship stale listing text.
+
 ## [1.1.1] - 2026-03-08
 
 ### Changed

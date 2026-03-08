@@ -22,3 +22,7 @@ manual_test/
 
 # Publishing notes (personal)
 extension_status.txt
+scripts/probe-antigravity-ports.ps1
+scripts/test-antigravity-backup-shortcut.ps1
+scripts/test-antigravity-shortcut.ps1
+scripts/trace-antigravity-launch.ps1
