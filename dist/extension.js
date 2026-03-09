@@ -5414,6 +5414,7 @@ function getControlPanelHtml() {
       <div class="row">
         <button class="primary" id="toggleAuto">Toggle Auto Accept</button>
         <button id="toggleBg">Toggle Background Mode</button>
+        <button id="copyDiagnostics">Copy Diagnostics</button>
       </div>
       <div class="muted" style="margin-top:8px;">Auto Accept: <span id="enabled">-</span> | Background: <span id="background">-</span></div>
     </div>
@@ -5513,6 +5514,7 @@ function getControlPanelHtml() {
     byId('clearExecutable').addEventListener('click', () => post('clearExecutable'));
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));
     byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
+    byId('copyDiagnostics').addEventListener('click', () => post('copyDiagnostics'));
     byId('pauseOnMismatch').addEventListener('change', (e) => post('setPauseOnMismatch', { value: !!e.target.checked }));
 
     post('ready');
@@ -5550,6 +5552,81 @@ async function buildControlPanelState() {
     hasExecutableOverride: executableState.hasOverride,
     executablePathValid: executableState.valid
   };
+}
+function toDiagnosticText(value, fallback = "-") {
+  if (value === null || value === void 0)
+    return fallback;
+  const text = String(value);
+  return text.length > 0 ? text : fallback;
+}
+function toDiagnosticList(values) {
+  return Array.isArray(values) && values.length > 0 ? values.map((value) => String(value)).join(", ") : "none";
+}
+async function buildDiagnosticsReport() {
+  const state = await buildControlPanelState();
+  let stats = null;
+  if (cdpHandler) {
+    try {
+      stats = await cdpHandler.getStats();
+    } catch (err) {
+      log(`[Support] Failed to collect CDP stats: ${err.message}`);
+    }
+  }
+  const lines = [
+    "Antigravity Auto Accept Diagnostics",
+    `generatedAt=${(/* @__PURE__ */ new Date()).toISOString()}`,
+    `version=${getExtensionVersion(globalContext)}`,
+    `ide=${toDiagnosticText(state.ide)}`,
+    `platform=${process.platform}`,
+    `remote=${toDiagnosticText(state.remoteName || "local")}`,
+    `hostKind=${toDiagnosticText(state.extensionHostKind)}`,
+    `workspaceFolders=${Array.isArray(vscode.workspace.workspaceFolders) ? vscode.workspace.workspaceFolders.length : 0}`,
+    `enabled=${isEnabled}`,
+    `backgroundMode=${backgroundModeEnabled}`,
+    `pollIntervalMs=${pollFrequency}`,
+    `cdpPort=${state.cdpPort}`,
+    `pauseOnCdpMismatch=${pauseOnCdpMismatch}`,
+    `cdpState=${toDiagnosticText(state.cdpStatus?.state)}`,
+    `cdpMessage=${toDiagnosticText(state.cdpStatus?.message)}`,
+    `cdpConnected=${!!state.cdpStatus?.connected}`,
+    `cdpActivePorts=${toDiagnosticList(state.cdpStatus?.activePorts)}`,
+    `cdpConnections=${state.connectionCount || 0}`,
+    `mcpUrl=${toDiagnosticText(state.cdpStatus?.mcp?.url)}`,
+    `mcpPort=${toDiagnosticText(state.cdpStatus?.mcp?.port)}`,
+    `mcpReachable=${state.cdpStatus?.mcp?.reachable === void 0 ? "-" : String(!!state.cdpStatus.mcp.reachable)}`,
+    `savedLauncherPath=${toDiagnosticText(state.savedLauncherPath)}`,
+    `savedLauncherPort=${toDiagnosticText(state.savedLauncherPort)}`,
+    `manualLaunchCommand=${toDiagnosticText(state.manualLaunchCommand)}`,
+    `executablePath=${toDiagnosticText(state.executablePath)}`,
+    `executablePathSource=${toDiagnosticText(state.executablePathSource)}`,
+    `executablePathValid=${state.executablePathValid === void 0 ? "-" : String(!!state.executablePathValid)}`,
+    `runtimeSafeCommands=${runtimeSafeCommands.length}`,
+    `discoveredAntigravityCommands=${antigravityDiscoveredCommands.length}`,
+    `blockedCommandPatterns=${bannedCommands.length}`
+  ];
+  if (stats) {
+    lines.push(
+      `stats.clicks=${stats.clicks || 0}`,
+      `stats.permissions=${stats.permissions || 0}`,
+      `stats.blocked=${stats.blocked || 0}`,
+      `stats.fileEdits=${stats.fileEdits || 0}`,
+      `stats.terminalCommands=${stats.terminalCommands || 0}`,
+      `stats.lastAction=${toDiagnosticText(stats.lastAction)}`,
+      `stats.lastActionLabel=${toDiagnosticText(stats.lastActionLabel)}`
+    );
+  }
+  return lines.join("\n");
+}
+async function handleCopyDiagnostics() {
+  try {
+    const report = await buildDiagnosticsReport();
+    await vscode.env.clipboard.writeText(report);
+    log("[Support] Diagnostics copied to clipboard");
+    vscode.window.showInformationMessage("Diagnostics copied to clipboard.");
+  } catch (err) {
+    log(`[Support] Failed to copy diagnostics: ${err.message}`);
+    vscode.window.showErrorMessage(`Failed to copy diagnostics: ${err.message}`);
+  }
 }
 async function postControlPanelState() {
   if (!controlPanel)
@@ -5665,6 +5742,11 @@ ${result.instructions}`;
       if (msg.type === "toggleBackground") {
         await handleBackgroundToggle(globalContext);
         await postControlPanelState();
+        return;
+      }
+      if (msg.type === "copyDiagnostics") {
+        await handleCopyDiagnostics();
+        await postControlPanelState();
       }
     } catch (err) {
       vscode.window.showErrorMessage(`Control panel error: ${err.message}`);
@@ -5763,7 +5845,8 @@ async function activate(context) {
       vscode.commands.registerCommand("auto-accept-free.toggle", () => handleToggle(context)),
       vscode.commands.registerCommand("auto-accept-free.toggleBackground", () => handleBackgroundToggle(context)),
       vscode.commands.registerCommand("auto-accept-free.setupCDP", () => handleSetupCDP()),
-      vscode.commands.registerCommand("auto-accept-free.openControlPanel", () => openControlPanel(context))
+      vscode.commands.registerCommand("auto-accept-free.openControlPanel", () => openControlPanel(context)),
+      vscode.commands.registerCommand("auto-accept-free.copyDiagnostics", () => handleCopyDiagnostics())
     );
     context.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {

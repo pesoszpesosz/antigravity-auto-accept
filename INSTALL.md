@@ -73,6 +73,10 @@ Use either:
 
 If CDP is connected, you can also enable Background Mode.
 
+If you need to send a quick support snapshot, run:
+
+- `Antigravity Auto Accept: Copy Diagnostics`
+
 ## 6) Manual Fallback
 
 ### Windows

@@ -76,6 +76,15 @@ Use:
 - `Toggle Background Mode` in the control panel
 - or `Antigravity Auto Accept: Toggle Background Mode`
 
+### Diagnostics
+
+Use:
+
+- `Copy Diagnostics` in the control panel
+- or `Antigravity Auto Accept: Copy Diagnostics`
+
+This copies a short runtime report to the clipboard for support and bug reports.
+
 ## 6) Manual Fallback Commands
 
 ### Windows

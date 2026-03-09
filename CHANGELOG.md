@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.3] - 2026-03-09
+
+### Added
+- Added a read-only `Copy Diagnostics` command that copies version, runtime mode, CDP state, launcher state, and support stats to the clipboard.
+- Added a `Copy Diagnostics` button to the control panel for faster bug-report workflow.
+
 ## [1.1.2] - 2026-03-09
 
 ### Changed

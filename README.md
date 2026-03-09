@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.2`
+- `1.1.3`
 
 Download:
 
@@ -104,6 +104,7 @@ It also lets the user:
 - save an IDE launcher anywhere
 - toggle Auto Accept
 - toggle Background Mode
+- copy diagnostics for support
 - pause behavior on CDP mismatch
 
 ## Launcher Flow
@@ -167,6 +168,7 @@ Windows has been verified end-to-end in the current fix cycle. The macOS and Lin
 - `Antigravity Auto Accept: Toggle Background Mode`
 - `Antigravity Auto Accept: Save IDE Launcher`
 - `Antigravity Auto Accept: Open Control Panel`
+- `Antigravity Auto Accept: Copy Diagnostics`
 
 ## Manual Fallback Commands
 
