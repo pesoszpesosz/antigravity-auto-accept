@@ -1945,6 +1945,7 @@ function getControlPanelHtml() {
     <div class="card">
       <div id="status" class="status">Loading...</div>
       <div class="grid" style="margin-top:10px;">
+        <div class="stat"><div class="k">Version</div><div id="extensionVersion" class="v">-</div></div>
         <div class="stat"><div class="k">IDE</div><div id="ide" class="v">-</div></div>
         <div class="stat"><div class="k">Platform</div><div id="platform" class="v">-</div></div>
         <div class="stat"><div class="k">Remote Context</div><div id="remote" class="v">-</div></div>
@@ -1983,6 +1984,7 @@ function getControlPanelHtml() {
         <button class="primary" id="toggleAuto">Toggle Auto Accept</button>
         <button id="toggleBg">Toggle Background Mode</button>
         <button id="copyDiagnostics">Copy Diagnostics</button>
+        <button id="openOutputLog">Open Output Log</button>
       </div>
       <div class="muted" style="margin-top:8px;">Auto Accept: <span id="enabled">-</span> | Background: <span id="background">-</span></div>
     </div>
@@ -2026,6 +2028,7 @@ function getControlPanelHtml() {
     }
 
     function render(state) {
+      byId('extensionVersion').textContent = state.extensionVersion || '-';
       byId('ide').textContent = state.ide || '-';
       byId('platform').textContent = state.platform || '-';
       byId('remote').textContent = state.remoteName || 'local';
@@ -2083,6 +2086,7 @@ function getControlPanelHtml() {
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));
     byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
     byId('copyDiagnostics').addEventListener('click', () => post('copyDiagnostics'));
+    byId('openOutputLog').addEventListener('click', () => post('openOutputLog'));
     byId('pauseOnMismatch').addEventListener('change', (e) => post('setPauseOnMismatch', { value: !!e.target.checked }));
 
     post('ready');
@@ -2101,6 +2105,7 @@ async function buildControlPanelState() {
     const exeInfo = resolveEditorExecutable(currentIDE);
     const executableState = getExecutablePreferenceState(exeInfo);
     return {
+        extensionVersion: getExtensionVersion(globalContext),
         ide: currentIDE,
         platform: process.platform,
         remoteName: vscode.env.remoteName || '',
@@ -2203,6 +2208,14 @@ async function handleCopyDiagnostics() {
         log(`[Support] Failed to copy diagnostics: ${err.message}`);
         vscode.window.showErrorMessage(`Failed to copy diagnostics: ${err.message}`);
     }
+}
+
+function handleOpenOutputLog() {
+    if (!outputChannel) {
+        outputChannel = vscode.window.createOutputChannel('Antigravity Auto Accept');
+    }
+    outputChannel.show(true);
+    log('[Support] Output log opened');
 }
 
 async function postControlPanelState() {
@@ -2321,6 +2334,11 @@ async function openControlPanel(context) {
             }
             if (msg.type === 'copyDiagnostics') {
                 await handleCopyDiagnostics();
+                await postControlPanelState();
+                return;
+            }
+            if (msg.type === 'openOutputLog') {
+                handleOpenOutputLog();
                 await postControlPanelState();
             }
         } catch (err) {
@@ -2442,7 +2460,8 @@ async function activate(context) {
             vscode.commands.registerCommand('auto-accept-free.toggleBackground', () => handleBackgroundToggle(context)),
             vscode.commands.registerCommand('auto-accept-free.setupCDP', () => handleSetupCDP()),
             vscode.commands.registerCommand('auto-accept-free.openControlPanel', () => openControlPanel(context)),
-            vscode.commands.registerCommand('auto-accept-free.copyDiagnostics', () => handleCopyDiagnostics())
+            vscode.commands.registerCommand('auto-accept-free.copyDiagnostics', () => handleCopyDiagnostics()),
+            vscode.commands.registerCommand('auto-accept-free.openOutputLog', () => handleOpenOutputLog())
         );
 
         // Observe settings changes

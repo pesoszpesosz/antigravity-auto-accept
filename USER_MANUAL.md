@@ -85,6 +85,15 @@ Use:
 
 This copies a short runtime report to the clipboard for support and bug reports.
 
+### Output Log
+
+Use:
+
+- `Open Output Log` in the control panel
+- or `Antigravity Auto Accept: Open Output Log`
+
+This opens the extension output channel directly so users can inspect recent runtime logs.
+
 ## 6) Manual Fallback Commands
 
 ### Windows

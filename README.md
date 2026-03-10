@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.3`
+- `1.1.4`
 
 Download:
 
@@ -88,6 +88,7 @@ The control panel is the center of the current workflow.
 
 It shows:
 
+- extension version
 - IDE
 - platform
 - remote context
@@ -105,6 +106,7 @@ It also lets the user:
 - toggle Auto Accept
 - toggle Background Mode
 - copy diagnostics for support
+- open the output log directly
 - pause behavior on CDP mismatch
 
 ## Launcher Flow
@@ -169,6 +171,7 @@ Windows has been verified end-to-end in the current fix cycle. The macOS and Lin
 - `Antigravity Auto Accept: Save IDE Launcher`
 - `Antigravity Auto Accept: Open Control Panel`
 - `Antigravity Auto Accept: Copy Diagnostics`
+- `Antigravity Auto Accept: Open Output Log`
 
 ## Manual Fallback Commands
 

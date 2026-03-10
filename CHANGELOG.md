@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.4] - 2026-03-10
+
+### Added
+- Added a read-only `Open Output Log` command to open the extension output channel directly from the command palette.
+- Added an `Open Output Log` button and an explicit extension version field in the control panel.
+
 ## [1.1.3] - 2026-03-09
 
 ### Added
