@@ -77,6 +77,8 @@ If you need to send a quick support snapshot, run:
 
 - `Antigravity Auto Accept: Copy Diagnostics`
 - `Antigravity Auto Accept: Open Output Log`
+- `Antigravity Auto Accept: Copy Launcher Steps`
+- `Antigravity Auto Accept: Copy Manual Launch Command`
 
 ## 6) Manual Fallback
 

@@ -1994,11 +1994,17 @@ function getControlPanelHtml() {
       <pre id="savedLauncherPath">-</pre>
       <div class="muted" id="savedLauncherPort" style="margin-top:6px;">Launcher port: -</div>
       <div class="k" style="margin-top:10px;">How To Open It</div>
+      <div class="row" style="margin-top:8px;">
+        <button id="copyLauncherSteps">Copy Launcher Steps</button>
+      </div>
       <pre id="launcherSteps">Save a launcher first to get platform-specific steps.</pre>
     </div>
 
     <div class="card">
       <div class="k">Manual Command (Alternative)</div>
+      <div class="row" style="margin-top:8px;">
+        <button id="copyManualCommand">Copy Manual Command</button>
+      </div>
       <pre id="manualCmd">-</pre>
     </div>
   </div>
@@ -2087,6 +2093,8 @@ function getControlPanelHtml() {
     byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
     byId('copyDiagnostics').addEventListener('click', () => post('copyDiagnostics'));
     byId('openOutputLog').addEventListener('click', () => post('openOutputLog'));
+    byId('copyLauncherSteps').addEventListener('click', () => post('copyLauncherSteps'));
+    byId('copyManualCommand').addEventListener('click', () => post('copyManualCommand'));
     byId('pauseOnMismatch').addEventListener('change', (e) => post('setPauseOnMismatch', { value: !!e.target.checked }));
 
     post('ready');
@@ -2207,6 +2215,30 @@ async function handleCopyDiagnostics() {
     } catch (err) {
         log(`[Support] Failed to copy diagnostics: ${err.message}`);
         vscode.window.showErrorMessage(`Failed to copy diagnostics: ${err.message}`);
+    }
+}
+
+async function handleCopyLauncherSteps() {
+    try {
+        const state = await buildControlPanelState();
+        await vscode.env.clipboard.writeText(state.launcherSteps || 'No launcher saved yet.');
+        log('[Support] Launcher steps copied to clipboard');
+        vscode.window.showInformationMessage('Launcher steps copied to clipboard.');
+    } catch (err) {
+        log(`[Support] Failed to copy launcher steps: ${err.message}`);
+        vscode.window.showErrorMessage(`Failed to copy launcher steps: ${err.message}`);
+    }
+}
+
+async function handleCopyManualLaunchCommand() {
+    try {
+        const state = await buildControlPanelState();
+        await vscode.env.clipboard.writeText(state.manualLaunchCommand || '');
+        log('[Support] Manual launch command copied to clipboard');
+        vscode.window.showInformationMessage('Manual launch command copied to clipboard.');
+    } catch (err) {
+        log(`[Support] Failed to copy manual launch command: ${err.message}`);
+        vscode.window.showErrorMessage(`Failed to copy manual launch command: ${err.message}`);
     }
 }
 
@@ -2340,6 +2372,16 @@ async function openControlPanel(context) {
             if (msg.type === 'openOutputLog') {
                 handleOpenOutputLog();
                 await postControlPanelState();
+                return;
+            }
+            if (msg.type === 'copyLauncherSteps') {
+                await handleCopyLauncherSteps();
+                await postControlPanelState();
+                return;
+            }
+            if (msg.type === 'copyManualCommand') {
+                await handleCopyManualLaunchCommand();
+                await postControlPanelState();
             }
         } catch (err) {
             vscode.window.showErrorMessage(`Control panel error: ${err.message}`);
@@ -2461,7 +2503,9 @@ async function activate(context) {
             vscode.commands.registerCommand('auto-accept-free.setupCDP', () => handleSetupCDP()),
             vscode.commands.registerCommand('auto-accept-free.openControlPanel', () => openControlPanel(context)),
             vscode.commands.registerCommand('auto-accept-free.copyDiagnostics', () => handleCopyDiagnostics()),
-            vscode.commands.registerCommand('auto-accept-free.openOutputLog', () => handleOpenOutputLog())
+            vscode.commands.registerCommand('auto-accept-free.openOutputLog', () => handleOpenOutputLog()),
+            vscode.commands.registerCommand('auto-accept-free.copyLauncherSteps', () => handleCopyLauncherSteps()),
+            vscode.commands.registerCommand('auto-accept-free.copyManualLaunchCommand', () => handleCopyManualLaunchCommand())
         );
 
         // Observe settings changes

@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.4`
+- `1.1.5`
 
 Download:
 
@@ -107,6 +107,8 @@ It also lets the user:
 - toggle Background Mode
 - copy diagnostics for support
 - open the output log directly
+- copy launcher steps
+- copy the manual launch command
 - pause behavior on CDP mismatch
 
 ## Launcher Flow
@@ -172,6 +174,8 @@ Windows has been verified end-to-end in the current fix cycle. The macOS and Lin
 - `Antigravity Auto Accept: Open Control Panel`
 - `Antigravity Auto Accept: Copy Diagnostics`
 - `Antigravity Auto Accept: Open Output Log`
+- `Antigravity Auto Accept: Copy Launcher Steps`
+- `Antigravity Auto Accept: Copy Manual Launch Command`
 
 ## Manual Fallback Commands
 

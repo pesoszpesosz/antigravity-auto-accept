@@ -94,6 +94,17 @@ Use:
 
 This opens the extension output channel directly so users can inspect recent runtime logs.
 
+### Launch Info
+
+Use:
+
+- `Copy Launcher Steps` in the control panel
+- `Copy Manual Command` in the control panel
+- `Antigravity Auto Accept: Copy Launcher Steps`
+- `Antigravity Auto Accept: Copy Manual Launch Command`
+
+These copy the existing setup instructions and fallback launch command without changing any runtime behavior.
+
 ## 6) Manual Fallback Commands
 
 ### Windows

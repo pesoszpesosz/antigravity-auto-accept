@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.5] - 2026-03-12
+
+### Added
+- Added a read-only `Copy Launcher Steps` command and control-panel button.
+- Added a read-only `Copy Manual Launch Command` command and control-panel button.
+
 ## [1.1.4] - 2026-03-10
 
 ### Added
