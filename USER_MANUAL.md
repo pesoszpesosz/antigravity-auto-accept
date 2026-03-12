@@ -105,6 +105,19 @@ Use:
 
 These copy the existing setup instructions and fallback launch command without changing any runtime behavior.
 
+### Recent Activity
+
+The control panel now shows a read-only recent-activity summary:
+
+- last action label
+- total approvals
+- permissions count
+- terminal command count
+- file edit count
+- blocked count
+
+This is intended as quick visibility only and does not change the approval flow.
+
 ## 6) Manual Fallback Commands
 
 ### Windows

@@ -5439,6 +5439,18 @@ function getControlPanelHtml() {
       </div>
       <pre id="manualCmd">-</pre>
     </div>
+
+    <div class="card">
+      <div class="k">Recent Activity</div>
+      <div class="grid" style="margin-top:10px;">
+        <div class="stat"><div class="k">Last Action</div><div id="lastActionLabel" class="v">-</div></div>
+        <div class="stat"><div class="k">Approvals</div><div id="activityClicks" class="v">0</div></div>
+        <div class="stat"><div class="k">Permissions</div><div id="activityPermissions" class="v">0</div></div>
+        <div class="stat"><div class="k">Terminal</div><div id="activityTerminal" class="v">0</div></div>
+        <div class="stat"><div class="k">File Edits</div><div id="activityFiles" class="v">0</div></div>
+        <div class="stat"><div class="k">Blocked</div><div id="activityBlocked" class="v">0</div></div>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -5480,6 +5492,12 @@ function getControlPanelHtml() {
       byId('savedLauncherPath').textContent = state.savedLauncherPath || '-';
       byId('savedLauncherPort').textContent = state.savedLauncherPath ? ('Launcher port: ' + String(state.savedLauncherPort || '-')) : 'Launcher port: -';
       byId('launcherSteps').textContent = state.launcherSteps || 'Save a launcher first to get platform-specific steps.';
+      byId('lastActionLabel').textContent = state.activityStats?.lastActionLabel || '-';
+      byId('activityClicks').textContent = String(state.activityStats?.clicks || 0);
+      byId('activityPermissions').textContent = String(state.activityStats?.permissions || 0);
+      byId('activityTerminal').textContent = String(state.activityStats?.terminalCommands || 0);
+      byId('activityFiles').textContent = String(state.activityStats?.fileEdits || 0);
+      byId('activityBlocked').textContent = String(state.activityStats?.blocked || 0);
       renderedPortValue = String(state.cdpPort || '');
       // Keep the user's in-progress draft while the panel auto-refreshes in the background.
       if (!portInputDirty) {
@@ -5543,6 +5561,7 @@ async function buildControlPanelState() {
   const launcherSteps = buildLauncherManualSteps(savedLauncherPath, launcherPort);
   const exeInfo = resolveEditorExecutable(currentIDE);
   const executableState = getExecutablePreferenceState(exeInfo);
+  const activityStats = await getRuntimeActivityStats();
   return {
     extensionVersion: getExtensionVersion(globalContext),
     ide: currentIDE,
@@ -5563,7 +5582,8 @@ async function buildControlPanelState() {
     executablePathSource: executableState.source,
     executablePathMessage: executableState.message,
     hasExecutableOverride: executableState.hasOverride,
-    executablePathValid: executableState.valid
+    executablePathValid: executableState.valid,
+    activityStats
   };
 }
 function toDiagnosticText(value, fallback = "-") {
@@ -5577,14 +5597,7 @@ function toDiagnosticList(values) {
 }
 async function buildDiagnosticsReport() {
   const state = await buildControlPanelState();
-  let stats = null;
-  if (cdpHandler) {
-    try {
-      stats = await cdpHandler.getStats();
-    } catch (err) {
-      log(`[Support] Failed to collect CDP stats: ${err.message}`);
-    }
-  }
+  const stats = state.activityStats || null;
   const lines = [
     "Antigravity Auto Accept Diagnostics",
     `generatedAt=${(/* @__PURE__ */ new Date()).toISOString()}`,
@@ -5629,6 +5642,29 @@ async function buildDiagnosticsReport() {
     );
   }
   return lines.join("\n");
+}
+async function getRuntimeActivityStats() {
+  const emptyStats = {
+    clicks: 0,
+    permissions: 0,
+    blocked: 0,
+    fileEdits: 0,
+    terminalCommands: 0,
+    lastAction: "",
+    lastActionLabel: ""
+  };
+  if (!cdpHandler)
+    return emptyStats;
+  try {
+    const stats = await cdpHandler.getStats();
+    return {
+      ...emptyStats,
+      ...stats || {}
+    };
+  } catch (err) {
+    log(`[Support] Failed to collect CDP stats: ${err.message}`);
+    return emptyStats;
+  }
 }
 async function handleCopyDiagnostics() {
   try {

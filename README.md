@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.5`
+- `1.1.6`
 
 Download:
 
@@ -96,6 +96,7 @@ It shows:
 - expected CDP port
 - active CDP ports
 - active CDP connections
+- recent activity counters
 - saved launcher path
 - exact manual launch command
 
@@ -109,6 +110,7 @@ It also lets the user:
 - open the output log directly
 - copy launcher steps
 - copy the manual launch command
+- show recent activity stats in the panel
 - pause behavior on CDP mismatch
 
 ## Launcher Flow

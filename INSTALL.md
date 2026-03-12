@@ -80,6 +80,8 @@ If you need to send a quick support snapshot, run:
 - `Antigravity Auto Accept: Copy Launcher Steps`
 - `Antigravity Auto Accept: Copy Manual Launch Command`
 
+The panel now also shows recent runtime activity counters so you can quickly confirm that approvals are being detected.
+
 ## 6) Manual Fallback
 
 ### Windows

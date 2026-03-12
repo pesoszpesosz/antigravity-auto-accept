@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.6] - 2026-03-12
+
+### Added
+- Added a read-only recent-activity section to the control panel using the existing runtime stats.
+- Surfaced last action, approvals, permissions, terminal commands, file edits, and blocked counts directly in the UI.
+
 ## [1.1.5] - 2026-03-12
 
 ### Added
