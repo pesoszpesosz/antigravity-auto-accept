@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.6`
+- `1.1.7`
 
 Download:
 
@@ -107,6 +107,7 @@ It also lets the user:
 - toggle Auto Accept
 - toggle Background Mode
 - copy diagnostics for support
+- copy a full support bundle
 - open the output log directly
 - copy launcher steps
 - copy the manual launch command

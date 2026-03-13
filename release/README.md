@@ -2,14 +2,14 @@
 
 Current packaged extension:
 
-- `antigravity-auto-accept-1.1.6.vsix`
-- `antigravity-auto-accept-1.1.6.vsix.sha256`
+- `antigravity-auto-accept-1.1.7.vsix`
+- `antigravity-auto-accept-1.1.7.vsix.sha256`
 
 Public links (after push):
 
-- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.1.6.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.1.6.vsix
-- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.1.6.vsix.sha256
+- https://github.com/pesoszpesosz/antigravity-auto-accept/blob/master/release/antigravity-auto-accept-1.1.7.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.1.7.vsix
+- https://raw.githubusercontent.com/pesoszpesosz/antigravity-auto-accept/master/release/antigravity-auto-accept-1.1.7.vsix.sha256
 
 
 

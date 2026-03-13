@@ -16,12 +16,12 @@ npx ovsx publish -p <OVSX_PAT>
 
 ### Exact VSIX path prepared for upload
 
-- `release/antigravity-auto-accept-1.1.6.vsix`
+- `release/antigravity-auto-accept-1.1.7.vsix`
 
 Recommended command:
 
 ```bash
-npx ovsx publish release/antigravity-auto-accept-1.1.6.vsix -p <OVSX_PAT>
+npx ovsx publish release/antigravity-auto-accept-1.1.7.vsix -p <OVSX_PAT>
 ```
 
 ## CI Publishing (recommended)

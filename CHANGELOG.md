@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.7] - 2026-03-13
+
+### Added
+- Added a read-only `Copy Full Support Bundle` command and control-panel button.
+- Combined diagnostics, launcher steps, manual launch command, and support command shortcuts into one clipboard-ready report for bug reports and setup help.
+
 ## [1.1.6] - 2026-03-12
 
 ### Added

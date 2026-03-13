@@ -1986,6 +1986,9 @@ function getControlPanelHtml() {
         <button id="copyDiagnostics">Copy Diagnostics</button>
         <button id="openOutputLog">Open Output Log</button>
       </div>
+      <div class="row" style="margin-top:8px;">
+        <button id="copySupportBundle">Copy Full Support Bundle</button>
+      </div>
       <div class="muted" style="margin-top:8px;">Auto Accept: <span id="enabled">-</span> | Background: <span id="background">-</span></div>
     </div>
 
@@ -2110,6 +2113,7 @@ function getControlPanelHtml() {
     byId('toggleAuto').addEventListener('click', () => post('toggleAuto'));
     byId('toggleBg').addEventListener('click', () => post('toggleBackground'));
     byId('copyDiagnostics').addEventListener('click', () => post('copyDiagnostics'));
+    byId('copySupportBundle').addEventListener('click', () => post('copySupportBundle'));
     byId('openOutputLog').addEventListener('click', () => post('openOutputLog'));
     byId('copyLauncherSteps').addEventListener('click', () => post('copyLauncherSteps'));
     byId('copyManualCommand').addEventListener('click', () => post('copyManualCommand'));
@@ -2168,8 +2172,7 @@ function toDiagnosticList(values) {
         : 'none';
 }
 
-async function buildDiagnosticsReport() {
-    const state = await buildControlPanelState();
+function buildDiagnosticsLines(state) {
     const stats = state.activityStats || null;
     const lines = [
         'Antigravity Auto Accept Diagnostics',
@@ -2216,6 +2219,36 @@ async function buildDiagnosticsReport() {
         );
     }
 
+    return lines;
+}
+
+async function buildDiagnosticsReport(stateOverride = null) {
+    const state = stateOverride || await buildControlPanelState();
+    return buildDiagnosticsLines(state).join('\n');
+}
+
+async function buildFullSupportBundleReport() {
+    const state = await buildControlPanelState();
+    const lines = [
+        'Antigravity Auto Accept Support Bundle',
+        '',
+        '[Diagnostics]',
+        ...buildDiagnosticsLines(state),
+        '',
+        '[Launcher Steps]',
+        state.launcherSteps || 'No launcher saved yet.',
+        '',
+        '[Manual Launch Command]',
+        state.manualLaunchCommand || '-',
+        '',
+        '[Support Commands]',
+        'Antigravity Auto Accept: Open Control Panel',
+        'Antigravity Auto Accept: Open Output Log',
+        'Antigravity Auto Accept: Copy Diagnostics',
+        'Antigravity Auto Accept: Copy Full Support Bundle',
+        'Antigravity Auto Accept: Copy Launcher Steps',
+        'Antigravity Auto Accept: Copy Manual Launch Command'
+    ];
     return lines.join('\n');
 }
 
@@ -2251,6 +2284,18 @@ async function handleCopyDiagnostics() {
     } catch (err) {
         log(`[Support] Failed to copy diagnostics: ${err.message}`);
         vscode.window.showErrorMessage(`Failed to copy diagnostics: ${err.message}`);
+    }
+}
+
+async function handleCopySupportBundle() {
+    try {
+        const report = await buildFullSupportBundleReport();
+        await vscode.env.clipboard.writeText(report);
+        log('[Support] Full support bundle copied to clipboard');
+        vscode.window.showInformationMessage('Full support bundle copied to clipboard.');
+    } catch (err) {
+        log(`[Support] Failed to copy full support bundle: ${err.message}`);
+        vscode.window.showErrorMessage(`Failed to copy full support bundle: ${err.message}`);
     }
 }
 
@@ -2405,6 +2450,11 @@ async function openControlPanel(context) {
                 await postControlPanelState();
                 return;
             }
+            if (msg.type === 'copySupportBundle') {
+                await handleCopySupportBundle();
+                await postControlPanelState();
+                return;
+            }
             if (msg.type === 'openOutputLog') {
                 handleOpenOutputLog();
                 await postControlPanelState();
@@ -2539,6 +2589,7 @@ async function activate(context) {
             vscode.commands.registerCommand('auto-accept-free.setupCDP', () => handleSetupCDP()),
             vscode.commands.registerCommand('auto-accept-free.openControlPanel', () => openControlPanel(context)),
             vscode.commands.registerCommand('auto-accept-free.copyDiagnostics', () => handleCopyDiagnostics()),
+            vscode.commands.registerCommand('auto-accept-free.copySupportBundle', () => handleCopySupportBundle()),
             vscode.commands.registerCommand('auto-accept-free.openOutputLog', () => handleOpenOutputLog()),
             vscode.commands.registerCommand('auto-accept-free.copyLauncherSteps', () => handleCopyLauncherSteps()),
             vscode.commands.registerCommand('auto-accept-free.copyManualLaunchCommand', () => handleCopyManualLaunchCommand())

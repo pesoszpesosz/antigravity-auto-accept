@@ -105,6 +105,15 @@ Use:
 
 These copy the existing setup instructions and fallback launch command without changing any runtime behavior.
 
+### Full Support Bundle
+
+Use:
+
+- `Copy Full Support Bundle` in the control panel
+- `Antigravity Auto Accept: Copy Full Support Bundle`
+
+This copies diagnostics, launcher steps, the manual launch command, and the main support commands into one clipboard block for issue reports or handoff.
+
 ### Recent Activity
 
 The control panel now shows a read-only recent-activity summary:
