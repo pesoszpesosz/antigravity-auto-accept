@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.8] - 2026-03-14
+
+### Added
+- Added a read-only `Support Guidance` card to the control panel with a recommended next step based on launcher, CDP, and executable-path state.
+- Added an exact `Last refresh` timestamp so users can see when the current panel snapshot was generated.
+
 ## [1.1.7] - 2026-03-13
 
 ### Added

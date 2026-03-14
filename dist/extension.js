@@ -5389,6 +5389,13 @@ function getControlPanelHtml() {
     </div>
 
     <div class="card">
+      <div class="k">Support Guidance</div>
+      <div id="guidanceLabel" class="v" style="margin-top:8px;">-</div>
+      <div id="guidanceText" class="muted" style="margin-top:8px;">-</div>
+      <div class="muted" style="margin-top:6px;">Last refresh: <span id="lastRefreshed">-</span></div>
+    </div>
+
+    <div class="card">
       <div class="row">
         <label>CDP Port
           <input id="portInput" type="number" min="1" max="65535" step="1" />
@@ -5489,6 +5496,9 @@ function getControlPanelHtml() {
       byId('portValue').textContent = String(state.cdpPort || '-');
       byId('ports').textContent = (state.cdpStatus?.activePorts || []).length ? state.cdpStatus.activePorts.join(', ') : 'none';
       byId('connections').textContent = String(state.connectionCount || 0);
+      byId('guidanceLabel').textContent = state.guidance?.label || '-';
+      byId('guidanceText').textContent = state.guidance?.message || '-';
+      byId('lastRefreshed').textContent = state.lastRefreshedAt || '-';
       byId('enabled').textContent = state.isEnabled ? 'ON' : 'OFF';
       byId('background').textContent = state.backgroundModeEnabled ? 'ON' : 'OFF';
       byId('manualCmd').textContent = state.manualLaunchCommand || '-';
@@ -5557,6 +5567,55 @@ function getControlPanelHtml() {
 </body>
 </html>`;
 }
+function buildSupportGuidance(state) {
+  if (state.hasExecutableOverride && state.executablePathValid === false) {
+    return {
+      label: "Fix IDE Path",
+      message: "The manual IDE path override is invalid. Clear it or choose a valid executable path before relying on launcher flow."
+    };
+  }
+  const cdpState = String(state.cdpStatus?.state || "");
+  if (cdpState === "mcp_only") {
+    return {
+      label: "MCP Only",
+      message: "This session is exposing MCP only, so the fixed CDP launcher workflow is not available here."
+    };
+  }
+  if (!state.savedLauncherPath) {
+    return {
+      label: "Save Launcher",
+      message: "Save an IDE launcher for the selected CDP port so you can reopen the IDE with the expected runtime configuration."
+    };
+  }
+  if (cdpState === "wrong_port") {
+    return {
+      label: "Reopen Through Launcher",
+      message: `The selected CDP port ${state.cdpPort} is not active. Reopen the IDE through the saved launcher or update the selected port.`
+    };
+  }
+  if (cdpState === "connecting") {
+    return {
+      label: "Wait For CDP",
+      message: "The expected CDP port is starting. Keep the IDE open and refresh the panel again in a moment."
+    };
+  }
+  if (cdpState === "ok" && (state.connectionCount || 0) < 1) {
+    return {
+      label: "Keep IDE Open",
+      message: "The expected CDP port is active, but no live CDP connection is registered yet. Give the IDE a moment and refresh if needed."
+    };
+  }
+  if (cdpState === "ok") {
+    return {
+      label: "Ready",
+      message: "CDP looks healthy. You can use Auto Accept or Background Mode when you need it."
+    };
+  }
+  return {
+    label: "Check CDP State",
+    message: "Verify the selected CDP port and reopen the IDE through the saved launcher if the expected port is missing."
+  };
+}
 async function buildControlPanelState() {
   const status = await detectCdpRuntimeStatus(cdpPort);
   markCdpRuntimeStatus(status);
@@ -5566,7 +5625,7 @@ async function buildControlPanelState() {
   const exeInfo = resolveEditorExecutable(currentIDE);
   const executableState = getExecutablePreferenceState(exeInfo);
   const activityStats = await getRuntimeActivityStats();
-  return {
+  const state = {
     extensionVersion: getExtensionVersion(globalContext),
     ide: currentIDE,
     platform: process.platform,
@@ -5587,8 +5646,11 @@ async function buildControlPanelState() {
     executablePathMessage: executableState.message,
     hasExecutableOverride: executableState.hasOverride,
     executablePathValid: executableState.valid,
-    activityStats
+    activityStats,
+    lastRefreshedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
+  state.guidance = buildSupportGuidance(state);
+  return state;
 }
 function toDiagnosticText(value, fallback = "-") {
   if (value === null || value === void 0)
@@ -5620,6 +5682,9 @@ function buildDiagnosticsLines(state) {
     `cdpConnected=${!!state.cdpStatus?.connected}`,
     `cdpActivePorts=${toDiagnosticList(state.cdpStatus?.activePorts)}`,
     `cdpConnections=${state.connectionCount || 0}`,
+    `lastRefreshedAt=${toDiagnosticText(state.lastRefreshedAt)}`,
+    `guidance.label=${toDiagnosticText(state.guidance?.label)}`,
+    `guidance.message=${toDiagnosticText(state.guidance?.message)}`,
     `mcpUrl=${toDiagnosticText(state.cdpStatus?.mcp?.url)}`,
     `mcpPort=${toDiagnosticText(state.cdpStatus?.mcp?.port)}`,
     `mcpReachable=${state.cdpStatus?.mcp?.reachable === void 0 ? "-" : String(!!state.cdpStatus.mcp.reachable)}`,

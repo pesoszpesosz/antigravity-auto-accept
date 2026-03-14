@@ -42,6 +42,7 @@ Where users should look:
 - expected CDP port
 - active CDP ports
 - CDP connections
+- support guidance with next step
 - saved launcher path
 - exact manual open steps
 - manual fallback command
@@ -113,6 +114,15 @@ Use:
 - `Antigravity Auto Accept: Copy Full Support Bundle`
 
 This copies diagnostics, launcher steps, the manual launch command, and the main support commands into one clipboard block for issue reports or handoff.
+
+### Support Guidance
+
+The control panel now also shows:
+
+- a recommended next step based on launcher/CDP status
+- the exact timestamp for the current panel snapshot
+
+This is read-only guidance only and does not change runtime behavior.
 
 ### Recent Activity
 
