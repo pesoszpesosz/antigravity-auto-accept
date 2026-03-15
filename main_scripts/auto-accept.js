@@ -139,6 +139,58 @@
             }
         };
 
+        const getDirectActionText = (el) => {
+            if (!el || !el.childNodes) return '';
+            let text = '';
+            for (const node of Array.from(el.childNodes)) {
+                if (node && node.nodeType === 3) {
+                    text += node.textContent || '';
+                }
+            }
+            return String(text).toLowerCase().replace(/\s+/g, ' ').trim();
+        };
+
+        const isClickableTextActionNode = (el) => {
+            if (!el) return false;
+
+            const tag = String(el.tagName || '').toLowerCase();
+            if (tag === 'button' || tag === 'a') return true;
+
+            const role = String(el.getAttribute && el.getAttribute('role') || '').toLowerCase();
+            if (role === 'button') return true;
+
+            if (typeof el.onclick === 'function') return true;
+            if (el.hasAttribute && el.hasAttribute('tabindex')) return true;
+
+            try {
+                const style = window.getComputedStyle(el);
+                if (String(style.cursor || '').toLowerCase() === 'pointer') {
+                    return true;
+                }
+            } catch (e) { }
+
+            const cls = String(el.className || '').toLowerCase();
+            return cls.includes('button') || cls.includes('action');
+        };
+
+        const isElementInViewport = (el, margin = 12) => {
+            if (!el || typeof el.getBoundingClientRect !== 'function') return false;
+            try {
+                const rect = el.getBoundingClientRect();
+                if (rect.width <= 0 || rect.height <= 0) return false;
+                if (rect.bottom < margin || rect.right < margin) return false;
+                if (rect.top > (window.innerHeight - margin)) return false;
+                if (rect.left > (window.innerWidth - margin)) return false;
+                return true;
+            } catch (e) {
+                return false;
+            }
+        };
+
+        const getAgentPanel = () => {
+            return queryAll('.antigravity-agent-side-panel').find(el => isElementInViewport(el, 0)) || null;
+        };
+
         const hasStepInputMarkers = () => {
             const markers = [
                 'step requires input',
@@ -369,6 +421,51 @@
         };
 
         const ACTION_NODE_SELECTOR = 'button, [role="button"], a[role="button"]';
+        const isBulkAcceptAction = (txt) => /^(file\s+with\s+changes\s+)?(accept|apply|keep)\s+all\b/i.test(String(txt || '').replace(/\s+/g, ' ').trim());
+        const getBulkActionNodes = (root) => {
+            const baseRoot = root || document;
+            const results = [];
+            const seen = new Set();
+            const add = (node) => {
+                if (!node || seen.has(node)) return;
+                seen.add(node);
+                results.push(node);
+            };
+
+            try {
+                for (const queryRoot of getQueryRoots(baseRoot)) {
+                    getInteractiveNodes(queryRoot).forEach(add);
+
+                    const textNodes = Array.from(queryRoot.querySelectorAll('span, div'));
+                    for (const el of textNodes) {
+                        if (!isClickableTextActionNode(el)) continue;
+
+                        const directText = getDirectActionText(el);
+                        if (!directText) continue;
+                        if (!isBulkAcceptAction(directText) && !/\breject\s+all\b/i.test(directText)) continue;
+
+                        add(el);
+                    }
+                }
+            } catch (e) { }
+
+            return results;
+        };
+        const isFileWithChangesContext = (node) => {
+            let current = node;
+            let depth = 0;
+            while (current && depth < 8) {
+                const text = String(current.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+                const hasFileChangesMarker = /\b(?:\d+\s+)?file(?:s)?\s+with\s+changes\b/i.test(text);
+                const hasBulkChoices = /\breject\s+all\b/i.test(text) && /\baccept\s+all\b/i.test(text);
+                if (hasFileChangesMarker && hasBulkChoices) {
+                    return true;
+                }
+                current = current.parentElement;
+                depth++;
+            }
+            return false;
+        };
         const PERMISSION_PROMPT_MARKERS = [
             'opening url in browser',
             'needs permission to act on',
@@ -505,6 +602,49 @@
 
         for (const container of promptContainers) {
             if (tryApprovePermissionInContainer(container, 'prompt-scope')) {
+                return clickedCount;
+            }
+        }
+
+        // Handle Antigravity bulk approval cards rendered in the side panel.
+        const bulkActionButtons = [];
+        const seenBulkActionButtons = new Set();
+        for (const container of promptContainers) {
+            try {
+                const scopedBulkButtons = getBulkActionNodes(container);
+                for (const btn of scopedBulkButtons) {
+                    if (!seenBulkActionButtons.has(btn)) {
+                        seenBulkActionButtons.add(btn);
+                        bulkActionButtons.push(btn);
+                    }
+                }
+            } catch (e) { }
+        }
+
+        const fileWithChangesAccept = getBulkActionNodes(getAgentPanel() || document).find(btn => {
+            const text = getDirectActionText(btn) || getActionText(btn);
+            if (!/\baccept\s+all\b/i.test(text)) return false;
+            if (!isElementInViewport(btn, 16)) return false;
+            return isFileWithChangesContext(btn);
+        });
+
+        if (fileWithChangesAccept && clickElement(fileWithChangesAccept, 'bulk-accept')) {
+            log(`File with changes approved automatically: "${getActionText(fileWithChangesAccept)}"`);
+            return clickedCount;
+        }
+
+        for (const btn of bulkActionButtons) {
+            const text = getDirectActionText(btn) || getActionText(btn);
+            if (!isBulkAcceptAction(text)) continue;
+            if (!isElementInViewport(btn, 16)) continue;
+
+            const container = btn.closest('[role="dialog"], .notification-toast, .notification-list-item, .monaco-dialog-box, .monaco-dialog-modal-block, .chat-tool-call, .chat-tool-response, [class*="tool-call"], [data-testid*="tool-call"], .antigravity-agent-side-panel') || btn.parentElement;
+            const containerText = getActionText(container || btn);
+            const neighbors = container ? getBulkActionNodes(container) : [];
+            if (isPermissionPromptContainer(containerText, neighbors)) continue;
+
+            if (clickElement(btn, 'bulk-accept')) {
+                log(`Bulk action approved automatically: "${text}"`);
                 return clickedCount;
             }
         }
