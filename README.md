@@ -31,7 +31,7 @@ https://github.com/pesoszpesosz/antigravity-auto-accept/issues
 
 Current version:
 
-- `1.1.8`
+- `1.1.9`
 
 Download:
 
@@ -97,6 +97,7 @@ It shows:
 - active CDP ports
 - active CDP connections
 - support guidance with next step
+- support health checklist
 - recent activity counters
 - saved launcher path
 - exact manual launch command

@@ -43,6 +43,7 @@ Where users should look:
 - active CDP ports
 - CDP connections
 - support guidance with next step
+- support health checklist
 - saved launcher path
 - exact manual open steps
 - manual fallback command
@@ -123,6 +124,18 @@ The control panel now also shows:
 - the exact timestamp for the current panel snapshot
 
 This is read-only guidance only and does not change runtime behavior.
+
+### Support Health
+
+The control panel now also shows a read-only health checklist:
+
+- launcher saved
+- expected port active
+- CDP connected
+- executable path valid
+- background ready
+
+These are quick yes/no checks only and do not change runtime behavior.
 
 ### Recent Activity
 

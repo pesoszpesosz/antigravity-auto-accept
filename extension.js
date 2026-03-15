@@ -1964,6 +1964,17 @@ function getControlPanelHtml() {
     </div>
 
     <div class="card">
+      <div class="k">Support Health</div>
+      <div class="grid" style="margin-top:10px;">
+        <div class="stat"><div class="k">Launcher Saved</div><div id="healthLauncherSaved" class="v">NO</div></div>
+        <div class="stat"><div class="k">Expected Port Active</div><div id="healthExpectedPortActive" class="v">NO</div></div>
+        <div class="stat"><div class="k">CDP Connected</div><div id="healthCdpConnected" class="v">NO</div></div>
+        <div class="stat"><div class="k">Executable Path Valid</div><div id="healthExecutablePathValid" class="v">NO</div></div>
+        <div class="stat"><div class="k">Background Ready</div><div id="healthBackgroundReady" class="v">NO</div></div>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="row">
         <label>CDP Port
           <input id="portInput" type="number" min="1" max="65535" step="1" />
@@ -2067,6 +2078,11 @@ function getControlPanelHtml() {
       byId('guidanceLabel').textContent = state.guidance?.label || '-';
       byId('guidanceText').textContent = state.guidance?.message || '-';
       byId('lastRefreshed').textContent = state.lastRefreshedAt || '-';
+      byId('healthLauncherSaved').textContent = state.supportHealth?.launcherSaved ? 'YES' : 'NO';
+      byId('healthExpectedPortActive').textContent = state.supportHealth?.expectedPortActive ? 'YES' : 'NO';
+      byId('healthCdpConnected').textContent = state.supportHealth?.cdpConnected ? 'YES' : 'NO';
+      byId('healthExecutablePathValid').textContent = state.supportHealth?.executablePathValid ? 'YES' : 'NO';
+      byId('healthBackgroundReady').textContent = state.supportHealth?.backgroundReady ? 'YES' : 'NO';
       byId('enabled').textContent = state.isEnabled ? 'ON' : 'OFF';
       byId('background').textContent = state.backgroundModeEnabled ? 'ON' : 'OFF';
       byId('manualCmd').textContent = state.manualLaunchCommand || '-';
@@ -2187,6 +2203,23 @@ function buildSupportGuidance(state) {
     };
 }
 
+function buildSupportHealth(state) {
+    const activePorts = Array.isArray(state.cdpStatus?.activePorts)
+        ? state.cdpStatus.activePorts.map(value => Number(value))
+        : [];
+    const expectedPortActive = activePorts.includes(Number(state.cdpPort)) || String(state.cdpStatus?.state || '') === 'ok';
+    const cdpConnected = !!state.cdpStatus?.connected || (state.connectionCount || 0) > 0;
+    const launcherSaved = !!state.savedLauncherPath;
+    const executablePathValid = !state.hasExecutableOverride || state.executablePathValid !== false;
+    return {
+        launcherSaved,
+        expectedPortActive,
+        cdpConnected,
+        executablePathValid,
+        backgroundReady: expectedPortActive && cdpConnected
+    };
+}
+
 async function buildControlPanelState() {
     const status = await detectCdpRuntimeStatus(cdpPort);
     markCdpRuntimeStatus(status);
@@ -2221,6 +2254,7 @@ async function buildControlPanelState() {
         lastRefreshedAt: new Date().toISOString()
     };
     state.guidance = buildSupportGuidance(state);
+    state.supportHealth = buildSupportHealth(state);
     return state;
 }
 
@@ -2260,6 +2294,11 @@ function buildDiagnosticsLines(state) {
         `lastRefreshedAt=${toDiagnosticText(state.lastRefreshedAt)}`,
         `guidance.label=${toDiagnosticText(state.guidance?.label)}`,
         `guidance.message=${toDiagnosticText(state.guidance?.message)}`,
+        `health.launcherSaved=${state.supportHealth ? String(!!state.supportHealth.launcherSaved) : '-'}`,
+        `health.expectedPortActive=${state.supportHealth ? String(!!state.supportHealth.expectedPortActive) : '-'}`,
+        `health.cdpConnected=${state.supportHealth ? String(!!state.supportHealth.cdpConnected) : '-'}`,
+        `health.executablePathValid=${state.supportHealth ? String(!!state.supportHealth.executablePathValid) : '-'}`,
+        `health.backgroundReady=${state.supportHealth ? String(!!state.supportHealth.backgroundReady) : '-'}`,
         `mcpUrl=${toDiagnosticText(state.cdpStatus?.mcp?.url)}`,
         `mcpPort=${toDiagnosticText(state.cdpStatus?.mcp?.port)}`,
         `mcpReachable=${state.cdpStatus?.mcp?.reachable === undefined ? '-' : String(!!state.cdpStatus.mcp.reachable)}`,

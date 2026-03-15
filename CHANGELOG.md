@@ -2,6 +2,12 @@
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
 
+## [1.1.9] - 2026-03-15
+
+### Added
+- Added a read-only `Support Health` checklist card to the control panel.
+- Surfaced yes/no checks for launcher saved state, expected port activity, CDP connectivity, executable-path validity, and background readiness.
+
 ## [1.1.8] - 2026-03-14
 
 ### Added
