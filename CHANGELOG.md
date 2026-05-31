@@ -1,6 +1,13 @@
 # Changelog
 
 All notable changes to the **Antigravity Auto Accept** extension are documented here.
+## [1.2.1] - 2026-05-31
+### Added
+- Support for multi-step "Choice + Submit" permission prompts
+- Enhanced detection for LABEL and SPAN based interaction
+- Improved click robustness with mousedown/mouseup dispatch
+- Discovered Antigravity command variants added to allowlist
+
 
 ## [1.2.0] - 2026-04-26
 

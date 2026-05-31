@@ -87,7 +87,7 @@ const ACCEPT_COMMANDS_CURSOR = [
 
 const ACCEPT_COMMANDS_ANTIGRAVITY = [
     'antigravity.command.accept',
-    'antigravity.agent.acceptAgentStep',
+    'antigravity.agent.acceptAgentStep', 'antigravity.acceptAgentStep', 'antigravity.prioritized.agentAcceptAllInFile', 'antigravity.prioritized.agentAcceptFocusedHunk', 'antigravity.acceptCompletion', 'antigravity.prioritized.supercompleteAccept',
     'antigravity.interactiveCascade.acceptSuggestedAction',
     'antigravity.terminalCommand.accept',
     'antigravity.terminalCommand.run',
@@ -106,7 +106,7 @@ const ACCEPT_COMMANDS_ANTIGRAVITY = [
 ];
 
 const ANTIGRAVITY_NATIVE_FALLBACK_COMMANDS = [
-    'antigravity.agent.acceptAgentStep',
+    'antigravity.agent.acceptAgentStep', 'antigravity.acceptAgentStep', 'antigravity.prioritized.agentAcceptAllInFile', 'antigravity.prioritized.agentAcceptFocusedHunk', 'antigravity.acceptCompletion', 'antigravity.prioritized.supercompleteAccept',
     'antigravity.command.accept',
     'antigravity.terminalCommand.accept',
     'antigravity.terminalCommand.run',

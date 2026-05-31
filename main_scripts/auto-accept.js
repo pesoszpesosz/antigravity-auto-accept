@@ -111,6 +111,15 @@
     // MAIN FUNCTION: CLICK BUTTONS
     // =================================================================
 
+    function tryClickSubmit(container) {
+        if (!container) return;
+        const submit = Array.from(container.querySelectorAll(ACTION_NODE_SELECTOR)).find(b => {
+            const t = getActionText(b);
+            return t.includes("submit") || t.includes("confirm");
+        });
+        if (submit) setTimeout(() => clickElement(submit, "submit"), 150);
+    }
+
     function getActionText(el) {
         const text = (el?.textContent || '').trim();
         const title = (el?.title || '').trim();
@@ -155,7 +164,7 @@
                 try {
                     const text = ((doc.body && doc.body.textContent) || '').toLowerCase();
                     if (markers.some(marker => text.includes(marker))) {
-                        return true;
+                        return true; tryClickSubmit(container);
                     }
                 } catch (e) { }
             }
@@ -175,7 +184,7 @@
                 try {
                     const text = ((doc.body && doc.body.textContent) || '').toLowerCase();
                     if (markers.some(marker => text.includes(marker))) {
-                        return true;
+                        return true; tryClickSubmit(container);
                     }
                 } catch (e) { }
             }
@@ -187,7 +196,7 @@
             const active = document.activeElement;
             if (!active) return false;
             const tag = (active.tagName || '').toLowerCase();
-            if (tag === 'textarea') return true;
+            if (tag === 'textarea') return true; tryClickSubmit(container);
             if (tag === 'input') {
                 const t = (active.type || '').toLowerCase();
                 return !['button', 'submit', 'checkbox', 'radio'].includes(t);
@@ -196,7 +205,7 @@
         };
 
         const isExcludedControl = (el, actionText) => {
-            if (!el) return true;
+            if (!el) return true; tryClickSubmit(container);
 
             const t = actionText || getActionText(el);
             const controlBlocklist = [
@@ -207,12 +216,12 @@
                 'setup cdp'
             ];
             if (controlBlocklist.some(keyword => t.includes(keyword))) {
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const inStatusBar = !!el.closest('#workbench\\.parts\\.statusbar, .statusbar, .part.statusbar');
             if (inStatusBar) {
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const inPromptContext = !!el.closest(
@@ -224,7 +233,7 @@
                 '.titlebar, .menubar, .activitybar, .sidebar, .composite.title, .tabs-container, .editor-actions, .action-bar'
             );
             if (inWorkbenchChrome && !inPromptContext) {
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             return false;
@@ -250,7 +259,7 @@
                     el.click();
                 }
 
-                el.dispatchEvent(new MouseEvent('click', {
+                const opts = { bubbles: true, cancelable: true, view: window }; el.dispatchEvent(new MouseEvent('mousedown', opts)); el.dispatchEvent(new MouseEvent('mouseup', opts)); el.dispatchEvent(new MouseEvent('click', {
                     view: window,
                     bubbles: true,
                     cancelable: true
@@ -285,7 +294,7 @@
                 } catch (e) { }
 
                 clickedCount++;
-                return true;
+                return true; tryClickSubmit(container);
             } catch (e) {
                 return false;
             }
@@ -362,13 +371,13 @@
                 state.terminalCommands = (state.terminalCommands || 0) + 1;
                 window.__autoAcceptFreeState = state;
                 log('Atalho Alt+Enter enviado para executar passo automaticamente');
-                return true;
+                return true; tryClickSubmit(container);
             } catch (e) {
                 return false;
             }
         };
 
-        const ACTION_NODE_SELECTOR = 'button, [role="button"], a[role="button"]';
+        const ACTION_NODE_SELECTOR = 'label, button, [role="button"], a[role="button"]';
         const PERMISSION_PROMPT_MARKERS = [
             'opening url in browser',
             'needs permission to act on',
@@ -424,7 +433,7 @@
 
             if (allowForConversation && clickElement(allowForConversation, 'permission')) {
                 log(`Permission approved with "Allow this conversation"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const allowOnce = buttons.find(btn => {
@@ -434,21 +443,21 @@
 
             if (allowOnce && clickElement(allowOnce, 'permission')) {
                 log(`Permission approved with "Allow Once"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const alwaysAllow = buttons.find(btn => {
                 const t = getActionText(btn);
                 if (!t || isNegative(t)) return false;
-                if (/\balways\s+allow\b/i.test(t)) return true;
-                if (/^always\b/i.test(t) && !/\balways\s+run\b/i.test(t)) return true;
-                if (/\balways\s*\.\.\./i.test(t)) return true;
+                if (/\balways\s+allow\b/i.test(t)) return true; tryClickSubmit(container);
+                if (/^always\b/i.test(t) && !/\balways\s+run\b/i.test(t)) return true; tryClickSubmit(container);
+                if (/\balways\s*\.\.\./i.test(t)) return true; tryClickSubmit(container);
                 return false;
             });
 
             if (alwaysAllow && clickElement(alwaysAllow, 'permission')) {
                 log(`Permission approved with "Always Allow"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const allowButton = buttons.find(btn => {
@@ -458,7 +467,7 @@
 
             if (allowButton && clickElement(allowButton, 'permission')) {
                 log(`Permission approved automatically: "${getActionText(allowButton)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const primaryButton = buttons.find(btn => {
@@ -470,7 +479,7 @@
 
             if (primaryButton && clickElement(primaryButton, 'permission')) {
                 log(`Permission approved via primary button: "${getActionText(primaryButton)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             const fallbackAllow = getInteractiveNodes(container).find(el => {
@@ -481,7 +490,7 @@
 
             if (fallbackAllow && clickElement(fallbackAllow, 'permission')) {
                 log(`Permission approved via fallback: "${getActionText(fallbackAllow)}"${sourceTag ? ` [${sourceTag}]` : ''}`);
-                return true;
+                return true; tryClickSubmit(container);
             }
 
             return false;
@@ -599,7 +608,7 @@
                 try {
                     const text = ((doc.body && doc.body.textContent) || '').toLowerCase();
                     if (text.includes('step requires input') || text.includes('requires input')) {
-                        return true;
+                        return true; tryClickSubmit(container);
                     }
                 } catch (e) { }
             }
@@ -903,7 +912,7 @@
             return clickedCount;
         }
 
-        const acceptKeywords = [
+        const acceptKeywords = ['yes, and always allow', 'yes, allow this time', 'yes', 'confirm', 'ok', 
             'accept',
             'accept all',
             'keep',
