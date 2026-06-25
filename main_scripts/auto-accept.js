@@ -127,9 +127,87 @@
         return /^\s*run/i.test(t) || /\brun\b/i.test(t) || /runalt\+/i.test(t);
     }
 
+    // Recent Antigravity builds (v2.1.x) render "Allow running this command?" approvals
+    // as a radio-style list of <label> elements plus a separate Submit button, instead of
+    // plain <button>s. getInteractiveNodes() never matches <label>, and a plain synthetic
+    // MouseEvent is ignored by the React UI, so these prompts were never auto-accepted.
+    // Handle them explicitly with a full PointerEvent sequence + Submit/Enter.
+    function handleRadioApprovalPrompt() {
+        const reactClick = (el) => {
+            try {
+                const r = el.getBoundingClientRect();
+                const o = { bubbles: true, cancelable: true, view: window, clientX: r.left + r.width / 2, clientY: r.top + r.height / 2, button: 0, pointerType: 'mouse', pointerId: 1, isPrimary: true };
+                el.dispatchEvent(new PointerEvent('pointerdown', o));
+                el.dispatchEvent(new MouseEvent('mousedown', o));
+                el.dispatchEvent(new PointerEvent('pointerup', o));
+                el.dispatchEvent(new MouseEvent('mouseup', o));
+                el.dispatchEvent(new MouseEvent('click', o));
+            } catch (e) {
+                try { el.click(); } catch (e2) { }
+            }
+        };
+
+        for (const doc of getDocuments()) {
+            try {
+                const bodyText = ((doc.body && doc.body.textContent) || '').toLowerCase();
+                // Generic across all approval prompts (run command, read/write path, URL, …):
+                // they all expose a 'Yes, allow this time' <label> option.
+                if (bodyText.indexOf('allow this time') === -1) continue;
+
+                let option = null;
+                const labels = doc.querySelectorAll('label');
+                for (const label of labels) {
+                    if ((label.textContent || '').toLowerCase().indexOf('allow this time') !== -1) {
+                        option = label;
+                        break;
+                    }
+                }
+                if (!option) continue;
+
+                const state = window.__autoAcceptFreeState || {};
+                const now = Date.now();
+                if ((state.lastRadioApprovalAt || 0) + 2000 > now) return true; // debounce
+                state.lastRadioApprovalAt = now;
+                window.__autoAcceptFreeState = state;
+
+                reactClick(option);
+                try {
+                    const input = option.querySelector('input');
+                    if (input && !input.checked) input.click();
+                } catch (e) { }
+
+                let submit = null;
+                const buttons = doc.querySelectorAll('button, [role="button"]');
+                for (const btn of buttons) {
+                    if ((btn.textContent || '').trim().toLowerCase() === 'submit') { submit = btn; break; }
+                }
+                if (submit) {
+                    setTimeout(() => reactClick(submit), 140);
+                } else {
+                    const target = doc.activeElement || doc.body;
+                    const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+                    target.dispatchEvent(new KeyboardEvent('keydown', opts));
+                    target.dispatchEvent(new KeyboardEvent('keyup', opts));
+                }
+
+                state.permissionApprovals = (state.permissionApprovals || 0) + 1;
+                state.lastAction = 'permission';
+                state.lastActionLabel = 'Yes, allow this time';
+                window.__autoAcceptFreeState = state;
+                log('Radio approval prompt handled (label + submit)');
+                return true;
+            } catch (e) { }
+        }
+        return false;
+    }
+
     function clickAcceptButtons() {
         let clickedCount = 0;
         const clickedElements = new Set();
+
+        if (handleRadioApprovalPrompt()) {
+            clickedCount++;
+        }
 
         const getInteractiveNodes = (root) => {
             try {
