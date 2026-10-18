@@ -1,4 +1,4 @@
-﻿const vscode = require('vscode');
+const vscode = require('vscode');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -504,7 +504,9 @@ async function detectCdpRuntimeStatus(expectedPort = cdpPort) {
         }
     }
 
-    const connected = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
+    const hasLiveConnection = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
+    const hasRecentActivity = !!(cdpHandler && typeof cdpHandler.hasRecentActivity === 'function' && cdpHandler.hasRecentActivity(15000));
+    const connected = hasLiveConnection || hasRecentActivity;
     const otherActivePorts = activePorts.filter(port => port !== expected);
     let state = 'ok';
     let message = `CDP ready on port ${expected}.`;
@@ -2939,15 +2941,16 @@ function updateStatusBar() {
         let icon = '$(check)';
         let tooltip = `Antigravity Auto Accept is active (${pollFrequency}ms)`;
 
-        const cdpConnected = cdpHandler && cdpHandler.getConnectionCount() > 0;
-        if ((currentIDE || '').toLowerCase() === 'antigravity' && pauseOnCdpMismatch && cdpRuntimeStatus && cdpRuntimeStatus.state !== 'ok' && cdpRuntimeStatus.state !== 'mcp_only') {
+        const cdpConnected = cdpHandler && (cdpHandler.getConnectionCount() > 0 || (typeof cdpHandler.hasRecentActivity === 'function' && cdpHandler.hasRecentActivity(15000)));
+        const isFatalMismatch = cdpRuntimeStatus && (cdpRuntimeStatus.state === 'wrong_port' || cdpRuntimeStatus.state === 'not_ready');
+        if ((currentIDE || '').toLowerCase() === 'antigravity' && pauseOnCdpMismatch && isFatalMismatch) {
             statusText = 'PAUSED';
             icon = '$(warning)';
             tooltip = `${cdpRuntimeStatus.message} Open Control Panel to fix.`;
         } else if (cdpConnected) {
             tooltip += ' | CDP connected';
         } else if ((currentIDE || '').toLowerCase() === 'antigravity') {
-            tooltip += ' | CDP disconnected';
+            tooltip += cdpRuntimeStatus?.state === 'connecting' ? ' | CDP connecting...' : ' | CDP disconnected';
         }
 
         statusBarItem.text = `${icon} Auto Accept: ${statusText}`;

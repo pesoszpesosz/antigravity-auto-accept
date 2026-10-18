@@ -3781,6 +3781,7 @@ var require_cdp_handler = __commonJS({
         this._lastConfigHash = "";
         this.basePort = DEFAULT_BASE_PORT;
         this.portRange = DEFAULT_PORT_RANGE;
+        this.lastActivityTs = 0;
       }
       log(msg) {
         this.logger(`[CDP] ${msg}`);
@@ -3955,6 +3956,7 @@ var require_cdp_handler = __commonJS({
             conn.eventHandler = onMessage;
             ws.on("message", onMessage);
             this.connections.set(id, conn);
+            this.markActivity();
             this.log(`Connected to ${targetInfo.type || "target"} ${id}`);
             resolve(true);
           });
@@ -4001,6 +4003,7 @@ var require_cdp_handler = __commonJS({
             await this._installScriptIntoContext(id, null, config, quiet, 1);
             conn.injected = true;
             conn.mode = mode;
+            this.markActivity();
             if (!quiet) {
               this.log(`Script injected into ${id}`);
             }
@@ -4110,6 +4113,7 @@ var require_cdp_handler = __commonJS({
             await this._installScriptIntoContext(id, sessionId, config, quiet, 1);
             session.injected = true;
             session.mode = mode;
+            this.markActivity();
           }
           if (session.mode !== null && session.mode !== mode) {
             await this._safeEvaluate(id, "if(window.__autoAcceptStop) window.__autoAcceptStop()", 1, sessionId);
@@ -4217,6 +4221,16 @@ var require_cdp_handler = __commonJS({
           count += conn.childSessions?.size || 0;
         }
         return count;
+      }
+      markActivity() {
+        this.lastActivityTs = Date.now();
+      }
+      hasRecentActivity(gracePeriodMs = 15e3) {
+        if (this.getConnectionCount() > 0)
+          return true;
+        if (!this.lastActivityTs)
+          return false;
+        return Date.now() - this.lastActivityTs <= gracePeriodMs;
       }
       async getStats() {
         const stats = { clicks: 0, permissions: 0, blocked: 0, fileEdits: 0, terminalCommands: 0, lastAction: "", lastActionLabel: "" };
@@ -4705,7 +4719,9 @@ async function detectCdpRuntimeStatus(expectedPort = cdpPort) {
       activePorts.push(port);
     }
   }
-  const connected = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
+  const hasLiveConnection = !!(cdpHandler && cdpHandler.getConnectionCount() > 0);
+  const hasRecentActivity = !!(cdpHandler && typeof cdpHandler.hasRecentActivity === "function" && cdpHandler.hasRecentActivity(15e3));
+  const connected = hasLiveConnection || hasRecentActivity;
   const otherActivePorts = activePorts.filter((port) => port !== expected);
   let state = "ok";
   let message = `CDP ready on port ${expected}.`;
@@ -6465,15 +6481,16 @@ function updateStatusBar() {
     let statusText = "ON";
     let icon = "$(check)";
     let tooltip = `Antigravity Auto Accept is active (${pollFrequency}ms)`;
-    const cdpConnected = cdpHandler && cdpHandler.getConnectionCount() > 0;
-    if ((currentIDE || "").toLowerCase() === "antigravity" && pauseOnCdpMismatch && cdpRuntimeStatus && cdpRuntimeStatus.state !== "ok" && cdpRuntimeStatus.state !== "mcp_only") {
+    const cdpConnected = cdpHandler && (cdpHandler.getConnectionCount() > 0 || typeof cdpHandler.hasRecentActivity === "function" && cdpHandler.hasRecentActivity(15e3));
+    const isFatalMismatch = cdpRuntimeStatus && (cdpRuntimeStatus.state === "wrong_port" || cdpRuntimeStatus.state === "not_ready");
+    if ((currentIDE || "").toLowerCase() === "antigravity" && pauseOnCdpMismatch && isFatalMismatch) {
       statusText = "PAUSED";
       icon = "$(warning)";
       tooltip = `${cdpRuntimeStatus.message} Open Control Panel to fix.`;
     } else if (cdpConnected) {
       tooltip += " | CDP connected";
     } else if ((currentIDE || "").toLowerCase() === "antigravity") {
-      tooltip += " | CDP disconnected";
+      tooltip += cdpRuntimeStatus?.state === "connecting" ? " | CDP connecting..." : " | CDP disconnected";
     }
     statusBarItem.text = `${icon} Auto Accept: ${statusText}`;
     statusBarItem.tooltip = tooltip;
