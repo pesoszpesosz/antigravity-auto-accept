@@ -1,4 +1,4 @@
-﻿const WebSocket = require('ws');
+const WebSocket = require('ws');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -53,6 +53,7 @@ class CDPHandler {
         this._lastConfigHash = '';
         this.basePort = DEFAULT_BASE_PORT;
         this.portRange = DEFAULT_PORT_RANGE;
+        this.lastActivityTs = 0;
     }
 
     log(msg) {
@@ -231,6 +232,7 @@ class CDPHandler {
                 conn.eventHandler = onMessage;
                 ws.on('message', onMessage);
                 this.connections.set(id, conn);
+                this.markActivity();
                 this.log(`Connected to ${targetInfo.type || 'target'} ${id}`);
                 resolve(true);
             });
@@ -284,6 +286,7 @@ class CDPHandler {
                 await this._installScriptIntoContext(id, null, config, quiet, 1);
                 conn.injected = true;
                 conn.mode = mode;
+                this.markActivity();
                 if (!quiet) {
                     this.log(`Script injected into ${id}`);
                 }
@@ -405,6 +408,7 @@ class CDPHandler {
                 await this._installScriptIntoContext(id, sessionId, config, quiet, 1);
                 session.injected = true;
                 session.mode = mode;
+                this.markActivity();
             }
 
             if (session.mode !== null && session.mode !== mode) {
@@ -521,6 +525,16 @@ class CDPHandler {
             count += conn.childSessions?.size || 0;
         }
         return count;
+    }
+
+    markActivity() {
+        this.lastActivityTs = Date.now();
+    }
+
+    hasRecentActivity(gracePeriodMs = 15000) {
+        if (this.getConnectionCount() > 0) return true;
+        if (!this.lastActivityTs) return false;
+        return (Date.now() - this.lastActivityTs) <= gracePeriodMs;
     }
 
     async getStats() {
